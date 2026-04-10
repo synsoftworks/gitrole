@@ -9,6 +9,7 @@ import {
   addRole,
   doctor,
   getDoctorExitCode,
+  getStatus,
   type DoctorDependencies,
   getCurrentRole,
   GitNotInstalledError,
@@ -35,6 +36,8 @@ import {
   renderRemoteUse,
   renderRoleList,
   renderSavedRole,
+  renderShortStatus,
+  renderStatus,
   renderUsedRole,
   renderWarning
 } from '../interface/renderer.js';
@@ -160,6 +163,16 @@ export function createProgram(
     const result = await listRoles(dependencies);
     io.stdout(renderRoleList(result));
   });
+
+  program
+    .command('status')
+    .description('show a compact alignment summary for the current repo and identity')
+    .option('--short', 'show machine-friendly status output')
+    .action(async (options: { short?: boolean }) => {
+      const result = await getStatus(dependencies);
+      io.stdout(options.short ? renderShortStatus(result) : renderStatus(result));
+      commandExitCode = result.overall === 'aligned' ? 0 : 2;
+    });
 
   program.command('doctor').action(async () => {
     const result = await doctor(dependencies);

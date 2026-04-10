@@ -5,6 +5,7 @@ import {
   doctor,
   getDoctorExitCode,
   getCurrentRole,
+  getStatus,
   useRemoteForRole,
   useRole,
   type AppDependencies,
@@ -248,6 +249,14 @@ test('doctor aligns commit identity, remote metadata, and SSH auth', async () =>
   assert.equal(result.checks.some((check) => check.status === 'warn'), false);
   assert.equal(result.checks.some((check) => check.label === 'identity'), false);
   assert.equal(getDoctorExitCode(result), 0);
+
+  const status = await getStatus(dependencies);
+  assert.equal(status.roleName, 'work');
+  assert.equal(status.commitIdentity, 'Sara Loera <sara@synthesissoftworks.com>');
+  assert.equal(status.overall, 'aligned');
+  assert.equal(status.commit, 'ok');
+  assert.equal(status.remote, 'ok');
+  assert.equal(status.auth, 'ok');
 });
 
 test('doctor warns when HTTPS remotes prevent SSH auth verification', async () => {
@@ -501,4 +510,11 @@ test('doctor adds a fix hint when no saved role matches the active commit identi
     ),
     true
   );
+
+  const status = await getStatus(dependencies);
+  assert.equal(status.roleName, 'no-role');
+  assert.equal(status.overall, 'warning');
+  assert.equal(status.commit, 'warn');
+  assert.equal(status.remote, 'ok');
+  assert.equal(status.auth, 'ok');
 });

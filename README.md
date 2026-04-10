@@ -26,6 +26,7 @@ gitrole add work \
   --github-host github.com-acme-dev
 
 gitrole use work
+gitrole status
 gitrole doctor
 ```
 
@@ -36,6 +37,7 @@ gitrole doctor
 - Switches global `user.email`
 - Optionally loads an SSH key with `ssh-add`
 - Shows which saved role matches the active commit identity
+- Shows a one-line repo and auth alignment summary with `gitrole status`
 - Diagnoses repo, remote, and SSH push alignment with `gitrole doctor`
 - Can rewrite `origin` to a role-specific GitHub SSH host alias
 
@@ -72,6 +74,8 @@ npx gitrole --help
 | `gitrole current`                                                                                   | Show which saved role matches the active Git commit identity.                    |
 | `gitrole current --verbose`                                                                         | Show the current role plus repository and auth diagnostics.                      |
 | `gitrole list`                                                                                      | List all saved roles and mark the active one.                                    |
+| `gitrole status`                                                                                    | Show a compact one-line alignment summary for the current repo and identity.     |
+| `gitrole status --short`                                                                            | Show machine-friendly alignment fields for scripts and shell integrations.       |
 | `gitrole doctor`                                                                                    | Diagnose commit identity, remote configuration, and SSH push identity.           |
 | `gitrole remote use <name>`                                                                         | Rewrite `origin` to the selected role's GitHub host alias.                       |
 | `gitrole remove <name>`                                                                             | Remove a saved role profile.                                                     |
@@ -246,6 +250,39 @@ Example:
 * work Alex Developer <alex@work.example> ~/.ssh/id_work
   personal Alex Developer <alex@personal.example>
 ```
+
+### Show a Compact Status
+
+```bash
+gitrole status
+```
+
+`status` is the shortest repo-aware view. It is designed for quick checks in a terminal, alias, or prompt.
+
+The plain-text form is intentionally compact and uses a small final state vocabulary:
+
+- `aligned`
+- `warning`
+
+Example:
+
+```text
+work  Alex Developer <alex@work.example>  aligned
+```
+
+For machine-friendly output:
+
+```bash
+gitrole status --short
+```
+
+Example:
+
+```text
+role=work commit=ok remote=ok auth=ok overall=aligned
+```
+
+`status --short` is intended to be stable for shell scripts, prompts, and automation. Treat its keys and values as the supported machine-readable interface for the compact status command.
 
 ### Diagnose the Current Repository
 

@@ -7,6 +7,7 @@ import type {
   DoctorResult,
   ListRolesResult,
   RemoteUseResult,
+  StatusResult,
   UseRoleResult
 } from '../application/use-cases.js';
 import type { Role } from '../domain/role.js';
@@ -123,6 +124,27 @@ export function renderRemoteUse(result: RemoteUseResult): string {
     formatDetail('from', result.previousUrl),
     formatDetail('to', result.nextUrl)
   ].join('\n');
+}
+
+export function renderStatus(result: StatusResult): string {
+  const summary =
+    result.overall === 'aligned' ? chalk.green(result.overall) : chalk.yellow(result.overall);
+
+  return [
+    chalk.bold(result.roleName),
+    result.commitIdentity ?? chalk.dim('commit identity unset'),
+    summary
+  ].join('  ');
+}
+
+export function renderShortStatus(result: StatusResult): string {
+  return [
+    `role=${result.roleName}`,
+    `commit=${result.commit}`,
+    `remote=${result.remote}`,
+    `auth=${result.auth}`,
+    `overall=${result.overall}`
+  ].join(' ');
 }
 
 export function renderDoctor(result: DoctorResult, title = 'doctor'): string {

@@ -143,6 +143,15 @@ export interface RemoteUseResult {
   nextUrl: string;
 }
 
+export interface StatusResult {
+  roleName: string;
+  commitIdentity?: string;
+  overall: 'aligned' | 'warning';
+  commit: 'ok' | 'warn' | 'na';
+  remote: 'ok' | 'warn' | 'na';
+  auth: 'ok' | 'warn' | 'na';
+}
+
 export class RoleMissingGithubHostError extends Error {
   constructor(name: string) {
     super(`role "${name}" does not define githubHost`);
@@ -355,6 +364,25 @@ export async function useRemoteForRole(
     role,
     previousUrl,
     nextUrl
+  };
+}
+
+/**
+ * Returns a compact alignment summary for the current environment.
+ */
+export async function getStatus(
+  dependencies: DoctorDependencies
+): Promise<StatusResult> {
+  const result = await doctor(dependencies);
+  const commitIdentity = formatCommitIdentity(result.commitIdentity);
+
+  return {
+    roleName: result.role?.name ?? 'no-role',
+    commitIdentity,
+    overall: getDoctorExitCode(result) === 0 ? 'aligned' : 'warning',
+    commit: getCheckGroupStatus(result.checks, ['role', 'commit', 'identity', 'fix']),
+    remote: getRemoteStatus(result),
+    auth: getAuthStatus(result)
   };
 }
 
@@ -709,4 +737,47 @@ function formatCommitIdentity(identity: DoctorResult['commitIdentity']): string 
   }
 
   return `${identity.fullName.value} <${identity.email.value}>`;
+}
+
+function getCheckGroupStatus(
+  checks: DoctorCheck[],
+  labels: string[]
+): 'ok' | 'warn' | 'na' {
+  const relevantChecks = checks.filter((check) => labels.includes(check.label));
+
+  if (relevantChecks.length === 0) {
+    return 'na';
+  }
+
+  return relevantChecks.some((check) => check.status === 'warn') ? 'warn' : 'ok';
+}
+
+function getRemoteStatus(result: DoctorResult): 'ok' | 'warn' | 'na' {
+  if (!result.repository.isInsideWorkTree) {
+    return 'na';
+  }
+
+  if (!result.repository.remote) {
+    return 'warn';
+  }
+
+  return getCheckGroupStatus(result.checks, ['repo', 'remote', 'host', 'owner', 'history']);
+}
+
+function getAuthStatus(result: DoctorResult): 'ok' | 'warn' | 'na' {
+  if (!result.repository.isInsideWorkTree || !result.repository.remote) {
+    return 'na';
+  }
+
+  if (result.repository.remote.protocol === 'https') {
+    return 'warn';
+  }
+
+  if (!result.sshAuth || !result.sshAuth.ok) {
+    return 'warn';
+  }
+
+  return result.checks.some((check) => check.label === 'auth' && check.status === 'warn')
+    ? 'warn'
+    : 'ok';
 }
