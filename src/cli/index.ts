@@ -14,6 +14,7 @@ import {
   getCurrentRole,
   GitNotInstalledError,
   listRoles,
+  NotInGitRepositoryError,
   OriginRemoteNotConfiguredError,
   ProfileNotFoundError,
   removeRole,
@@ -129,20 +130,30 @@ export function createProgram(
       io.stdout(renderSavedRole(role));
     });
 
-  program.command('use').argument('<name>', 'role name').action(async (name: string) => {
-    const result = await useRole(dependencies, name);
-    io.stdout(renderUsedRole(result));
-
-    if (result.ssh && !result.ssh.ok && result.ssh.message) {
-      io.stderr(renderWarning(result.ssh.message));
-    }
-
-    for (const check of result.alignment?.checks ?? []) {
-      if (check.status === 'warn') {
-        io.stderr(renderWarning(check.message));
+  program
+    .command('use')
+    .argument('<name>', 'role name')
+    .option('--global', 'apply the role to global Git config')
+    .option('--local', 'apply the role to repository-local Git config')
+    .action(async (name: string, options: { global?: boolean; local?: boolean }) => {
+      if (options.global && options.local) {
+        throw new Error('choose only one of --global or --local');
       }
-    }
-  });
+
+      const scope = options.local ? 'local' : 'global';
+      const result = await useRole(dependencies, name, { scope });
+      io.stdout(renderUsedRole(result));
+
+      if (result.ssh && !result.ssh.ok && result.ssh.message) {
+        io.stderr(renderWarning(result.ssh.message));
+      }
+
+      for (const check of result.alignment?.checks ?? []) {
+        if (check.status === 'warn') {
+          io.stderr(renderWarning(check.message));
+        }
+      }
+    });
 
   program
     .command('current')
@@ -223,6 +234,7 @@ function formatError(error: unknown): string {
   if (
     error instanceof ProfileNotFoundError ||
     error instanceof GitNotInstalledError ||
+    error instanceof NotInGitRepositoryError ||
     error instanceof RoleMissingGithubHostError ||
     error instanceof OriginRemoteNotConfiguredError ||
     error instanceof UnsupportedRemoteRewriteError

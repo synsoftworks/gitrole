@@ -37,6 +37,7 @@ export function renderSavedRole(role: Role): string {
 export function renderUsedRole(result: UseRoleResult): string {
   const lines = [
     `${chalk.green('switched to')} ${chalk.bold(result.role.name)}`,
+    formatDetail('scope', result.scope),
     formatDetail('name', result.role.fullName),
     formatDetail('email', result.role.email)
   ];
@@ -129,10 +130,12 @@ export function renderRemoteUse(result: RemoteUseResult): string {
 export function renderStatus(result: StatusResult): string {
   const summary =
     result.overall === 'aligned' ? chalk.green(result.overall) : chalk.yellow(result.overall);
+  const scopeLabel = formatStatusScope(result);
 
   return [
     chalk.bold(result.roleName),
     result.commitIdentity ?? chalk.dim('commit identity unset'),
+    chalk.dim(scopeLabel),
     summary
   ].join('  ');
 }
@@ -140,6 +143,8 @@ export function renderStatus(result: StatusResult): string {
 export function renderShortStatus(result: StatusResult): string {
   return [
     `role=${result.roleName}`,
+    `scope=${result.scope}`,
+    `override=${result.localOverride}`,
     `commit=${result.commit}`,
     `remote=${result.remote}`,
     `auth=${result.auth}`,
@@ -151,9 +156,17 @@ export function renderDoctor(result: DoctorResult, title = 'doctor'): string {
   const lines = [
     chalk.bold(title),
     formatDetail('role', result.role?.name ?? chalk.yellow('no matching role')),
+    formatDetail('scope', result.scope.effective),
+    formatDetail('local', result.scope.hasLocalOverride ? 'active' : 'inactive'),
     formatDetail('name', formatDiagnosedValue(result.commitIdentity.fullName)),
     formatDetail('email', formatDiagnosedValue(result.commitIdentity.email))
   ];
+
+  const globalIdentity = formatIdentityPair(result.configuredIdentity.global);
+
+  if (shouldRenderGlobalIdentity(result)) {
+    lines.push(formatDetail('global', globalIdentity));
+  }
 
   if (result.role?.githubUser) {
     lines.push(formatDetail('gh', result.role.githubUser));
@@ -251,4 +264,37 @@ function formatDiagnosedValue(input: {
   }
 
   return `${input.value} ${chalk.dim(`(${input.source})`)}`;
+}
+
+function formatStatusScope(result: StatusResult): string {
+  if (result.localOverride && result.scope === 'local') {
+    return 'local override';
+  }
+
+  if (result.localOverride && result.scope === 'mixed') {
+    return 'mixed override';
+  }
+
+  return result.scope;
+}
+
+function shouldRenderGlobalIdentity(result: DoctorResult): boolean {
+  if (!result.scope.hasLocalOverride) {
+    return false;
+  }
+
+  return (
+    result.configuredIdentity.global.fullName !== undefined ||
+    result.configuredIdentity.global.email !== undefined
+  ) && (
+    result.configuredIdentity.global.fullName !== result.commitIdentity.fullName.value ||
+    result.configuredIdentity.global.email !== result.commitIdentity.email.value
+  );
+}
+
+function formatIdentityPair(identity: { fullName?: string; email?: string }): string {
+  const fullName = identity.fullName ?? chalk.dim('not set');
+  const email = identity.email ?? chalk.dim('not set');
+
+  return `${fullName} <${email}>`;
 }
