@@ -65,16 +65,16 @@ npx gitrole --help
 
 ## Commands
 
-| Command | Purpose |
-| --- | --- |
-| `gitrole add <name> --name "..." --email "..." [--ssh ...] [--github-user ...] [--github-host ...]` | Create or update a saved role profile. |
-| `gitrole use <name>` | Switch global Git identity to the selected role and optionally load its SSH key. |
-| `gitrole current` | Show which saved role matches the active Git commit identity. |
-| `gitrole current --verbose` | Show the current role plus repository and auth diagnostics. |
-| `gitrole list` | List all saved roles and mark the active one. |
-| `gitrole doctor` | Diagnose commit identity, remote configuration, and SSH push identity. |
-| `gitrole remote use <name>` | Rewrite `origin` to the selected role's GitHub host alias. |
-| `gitrole remove <name>` | Remove a saved role profile. |
+| Command                                                                                             | Purpose                                                                          |
+| --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `gitrole add <name> --name "..." --email "..." [--ssh ...] [--github-user ...] [--github-host ...]` | Create or update a saved role profile.                                           |
+| `gitrole use <name>`                                                                                | Switch global Git identity to the selected role and optionally load its SSH key. |
+| `gitrole current`                                                                                   | Show which saved role matches the active Git commit identity.                    |
+| `gitrole current --verbose`                                                                         | Show the current role plus repository and auth diagnostics.                      |
+| `gitrole list`                                                                                      | List all saved roles and mark the active one.                                    |
+| `gitrole doctor`                                                                                    | Diagnose commit identity, remote configuration, and SSH push identity.           |
+| `gitrole remote use <name>`                                                                         | Rewrite `origin` to the selected role's GitHub host alias.                       |
+| `gitrole remove <name>`                                                                             | Remove a saved role profile.                                                     |
 
 ## SSH Host Aliases
 
@@ -338,57 +338,6 @@ gitrole use personal
 gitrole add acme --name "Alex Developer" --email "alex@client.example" --ssh ~/.ssh/id_acme
 gitrole use acme
 ```
-
-## Development
-
-```bash
-npm install
-npm run build
-npm link
-gitrole --help
-```
-
-For local execution without linking:
-
-```bash
-node dist/cli/index.js --help
-```
-
-## Testing
-
-```bash
-npm test
-npm run build
-```
-
-## Safe Manual Smoke Test
-
-If you want to test without touching your real global Git identity, use a temporary `HOME`:
-
-```bash
-TMP_HOME="$(mktemp -d)"
-
-HOME="$TMP_HOME" XDG_CONFIG_HOME="$TMP_HOME/config" node dist/cli/index.js add demo --name "Alex Developer" --email "alex@work.example"
-HOME="$TMP_HOME" XDG_CONFIG_HOME="$TMP_HOME/config" node dist/cli/index.js use demo
-HOME="$TMP_HOME" XDG_CONFIG_HOME="$TMP_HOME/config" node dist/cli/index.js current
-HOME="$TMP_HOME" XDG_CONFIG_HOME="$TMP_HOME/config" node dist/cli/index.js list
-```
-
-## Error Behavior
-
-- Unknown role: exits with code `1`
-- Missing `git`: exits with code `1`
-- `ssh-add` failure: prints a warning to stderr but still succeeds
-- Config file missing: created automatically
-- `doctor`: exits with `2` when warnings or mismatches are found
-
-## Notes
-
-- `gitrole` changes global Git config, not per-repository config
-- SSH key loading is most useful when your remotes use SSH
-- `gitrole doctor` can only verify push auth for SSH remotes, not HTTPS remotes
-- `gitrole remote use <role>` rewrites only the SSH host alias; it intentionally preserves the observed remote owner and repository name
-- If you work across identities simultaneously, repo-local switching may be a better future enhancement than more global state
 
 ## Community
 
