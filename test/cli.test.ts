@@ -123,7 +123,169 @@ process.exit(1);
 
   assert.equal(result.status, 2);
   assert.match(result.stdout, /doctor/);
+  assert.doesNotMatch(result.stdout, /^\s*\{/);
   assert.equal(result.stderr, '');
+});
+
+test('cli doctor --json emits valid JSON and exits 0 when aligned', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-cli-doctor-json-ok-'));
+  const configHome = path.join(tempDir, 'config');
+  const gitStubPath = path.join(tempDir, 'git-stub.mjs');
+  const sshStubPath = path.join(tempDir, 'ssh-stub.mjs');
+
+  await writeFile(
+    gitStubPath,
+    `#!/usr/bin/env node
+const args = process.argv.slice(2);
+if (args[0] === 'config' && args[1] === '--global' && args[2] === '--get' && args[3] === 'user.name') {
+  process.stdout.write('Alex Developer\\n');
+  process.exit(0);
+}
+if (args[0] === 'config' && args[1] === '--global' && args[2] === '--get' && args[3] === 'user.email') {
+  process.stdout.write('alex@work.example\\n');
+  process.exit(0);
+}
+if (args[0] === 'config' && args[1] === '--local' && args[2] === '--get') {
+  process.exit(1);
+}
+if (args[0] === 'rev-parse' && args[1] === '--is-inside-work-tree') {
+  process.stdout.write('true\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args[1] === '--verify') {
+  process.stdout.write('abcdef0\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args[1] === '--show-toplevel') {
+  process.stdout.write('${tempDir.replaceAll("'", "'\\''")}\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args.includes('@{upstream}')) {
+  process.stdout.write('origin/main\\n');
+  process.exit(0);
+}
+if (args[0] === 'branch' && args[1] === '--show-current') {
+  process.stdout.write('main\\n');
+  process.exit(0);
+}
+if (args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'origin') {
+  process.stdout.write('git@github.com-acme-dev:acme-dev/gitrole.git\\n');
+  process.exit(0);
+}
+process.exit(1);
+`,
+    'utf8'
+  );
+  await chmod(gitStubPath, 0o755);
+  await writeFile(
+    sshStubPath,
+    `#!/usr/bin/env node
+process.stderr.write("Hi acme-dev! You've successfully authenticated, but GitHub does not provide shell access.\\n");
+process.exit(1);
+`,
+    'utf8'
+  );
+  await chmod(sshStubPath, 0o755);
+  await mkdir(path.join(configHome, 'gitrole'), { recursive: true });
+  await writeFile(
+    path.join(configHome, 'gitrole', 'roles.json'),
+    JSON.stringify(
+      {
+        roles: [
+          {
+            name: 'work',
+            fullName: 'Alex Developer',
+            email: 'alex@work.example',
+            githubUser: 'acme-dev',
+            githubHost: 'github.com-acme-dev'
+          }
+        ]
+      },
+      null,
+      2
+    ),
+    'utf8'
+  );
+
+  const env = {
+    ...process.env,
+    HOME: tempDir,
+    XDG_CONFIG_HOME: configHome,
+    GITROLE_GIT_BIN: gitStubPath,
+    GITROLE_SSH_BIN: sshStubPath
+  };
+
+  const result = spawnSync(process.execPath, [cliPath, 'doctor', '--json'], {
+    encoding: 'utf8',
+    env
+  });
+  const parsed = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(result.stderr, '');
+  assert.equal(parsed.overall, 'aligned');
+  assert.equal(parsed.role.name, 'work');
+  assert.equal(parsed.repository.remote.host, 'github.com-acme-dev');
+  assert.equal(parsed.sshAuth.githubUser, 'acme-dev');
+});
+
+test('cli doctor --json emits valid JSON and exits 2 when warnings are present', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-cli-doctor-json-warn-'));
+  const configHome = path.join(tempDir, 'config');
+  const gitStubPath = path.join(tempDir, 'git-stub.mjs');
+
+  await writeFile(
+    gitStubPath,
+    `#!/usr/bin/env node
+const args = process.argv.slice(2);
+if (args[0] === 'config' && args[2] === '--get') {
+  process.exit(1);
+}
+if (args[0] === 'rev-parse' && args[1] === '--is-inside-work-tree') {
+  process.stdout.write('false\\n');
+  process.exit(0);
+}
+process.exit(1);
+`,
+    'utf8'
+  );
+  await chmod(gitStubPath, 0o755);
+
+  const env = {
+    ...process.env,
+    HOME: tempDir,
+    XDG_CONFIG_HOME: configHome,
+    GITROLE_GIT_BIN: gitStubPath
+  };
+
+  const result = spawnSync(process.execPath, [cliPath, 'doctor', '--json'], {
+    encoding: 'utf8',
+    env
+  });
+  const parsed = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 2);
+  assert.equal(result.stderr, '');
+  assert.equal(parsed.overall, 'warning');
+  assert.equal(parsed.repository.isInsideWorkTree, false);
+  assert.equal(Array.isArray(parsed.checks), true);
+  assert.equal(parsed.checks.some((check: { status: string }) => check.status === 'warn'), true);
+});
+
+test('cli doctor --json exits 1 on operational failure and keeps stdout empty', () => {
+  const env = {
+    ...process.env,
+    GITROLE_GIT_BIN: path.join(os.tmpdir(), 'does-not-exist-gitrole-git')
+  };
+
+  const result = spawnSync(process.execPath, [cliPath, 'doctor', '--json'], {
+    encoding: 'utf8',
+    env
+  });
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  assert.match(result.stderr, /error: git is not installed or not available on PATH/);
 });
 
 test('cli current --verbose renders the current heading instead of doctor', async () => {
@@ -758,6 +920,6 @@ test('cli runs correctly when invoked through a symlinked entrypoint', async () 
   });
 
   assert.equal(result.status, 0);
-  assert.match(result.stdout, /Switch your full git identity in one command/);
+  assert.match(result.stdout, /Manage named git identities and diagnose repo alignment/);
   assert.equal(result.stderr, '');
 });
