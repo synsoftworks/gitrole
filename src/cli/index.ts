@@ -97,17 +97,40 @@ export function createProgram(
 
   program
     .name('gitrole')
-    .description('Switch your full git identity in one command.')
-    .version('0.2.0');
+    .description('Manage named git identities and diagnose repo alignment.')
+    .version('0.2.0')
+    .addHelpText(
+      'after',
+      `
+
+Examples:
+  $ gitrole add work --name "Alex Developer" --email "alex@work.example"
+  $ gitrole use work
+  $ gitrole use work --local
+  $ gitrole status
+  $ gitrole current --verbose
+  $ gitrole remote use work
+`
+    );
 
   program
     .command('add')
-    .argument('<name>', 'role name')
-    .requiredOption('--name <fullName>', 'git user.name value')
-    .requiredOption('--email <email>', 'git user.email value')
-    .option('--ssh <path>', 'ssh private key to load with ssh-add')
-    .option('--github-user <githubUser>', 'expected GitHub identity for SSH pushes')
-    .option('--github-host <githubHost>', 'expected SSH host or host alias for GitHub pushes')
+    .description('save or update a named role')
+    .argument('<name>', 'saved role name')
+    .requiredOption('--name <fullName>', 'git user.name value for this role')
+    .requiredOption('--email <email>', 'git user.email value for this role')
+    .option('--ssh <path>', 'SSH private key to load with ssh-add')
+    .option('--github-user <githubUser>', 'expected GitHub user for SSH pushes')
+    .option('--github-host <githubHost>', 'expected GitHub SSH host or host alias')
+    .addHelpText(
+      'after',
+      `
+
+Examples:
+  $ gitrole add work --name "Alex Developer" --email "alex@work.example"
+  $ gitrole add work --name "Alex Developer" --email "alex@work.example" --ssh ~/.ssh/id_work
+`
+    )
     .action(async (
       name: string,
       options: {
@@ -132,9 +155,27 @@ export function createProgram(
 
   program
     .command('use')
-    .argument('<name>', 'role name')
-    .option('--global', 'apply the role to global Git config')
+    .description('apply a saved role globally or to the current repo')
+    .argument('<name>', 'saved role name')
+    .option('--global', 'apply the role to global Git config (default)')
     .option('--local', 'apply the role to repository-local Git config')
+    .addHelpText(
+      'after',
+      `
+
+Scope:
+  no flag / --global  apply the role to global Git config
+  --local             apply the role only to the current repository; requires a git repo
+
+Notes:
+  If the role defines an SSH key, gitrole still loads it with ssh-add.
+
+Examples:
+  $ gitrole use work
+  $ gitrole use work --global
+  $ gitrole use work --local
+`
+    )
     .action(async (name: string, options: { global?: boolean; local?: boolean }) => {
       if (options.global && options.local) {
         throw new Error('choose only one of --global or --local');
@@ -157,7 +198,17 @@ export function createProgram(
 
   program
     .command('current')
-    .option('--verbose', 'show repository and auth diagnostics')
+    .description('show the active role or verbose repo diagnostics')
+    .option('--verbose', 'show effective identity plus repo and auth diagnostics')
+    .addHelpText(
+      'after',
+      `
+
+Examples:
+  $ gitrole current
+  $ gitrole current --verbose
+`
+    )
     .action(async (options: { verbose?: boolean }) => {
       if (options.verbose) {
         const result = await doctor(dependencies);
@@ -170,41 +221,99 @@ export function createProgram(
       io.stdout(renderCurrentRole(result));
     });
 
-  program.command('list').action(async () => {
+  program.command('list').description('list saved roles and mark the active one').action(async () => {
     const result = await listRoles(dependencies);
     io.stdout(renderRoleList(result));
   });
 
   program
     .command('status')
-    .description('show a compact alignment summary for the current repo and identity')
-    .option('--short', 'show machine-friendly status output')
+    .description('show a compact alignment summary')
+    .option('--short', 'show machine-friendly one-line status output')
+    .addHelpText(
+      'after',
+      `
+
+Views:
+  default   compact human-readable summary
+  --short   stable one-line format for scripts, prompts, and automation
+
+Examples:
+  $ gitrole status
+  $ gitrole status --short
+`
+    )
     .action(async (options: { short?: boolean }) => {
       const result = await getStatus(dependencies);
       io.stdout(options.short ? renderShortStatus(result) : renderStatus(result));
       commandExitCode = result.overall === 'aligned' ? 0 : 2;
     });
 
-  program.command('doctor').action(async () => {
-    const result = await doctor(dependencies);
-    io.stdout(renderDoctor(result));
-    commandExitCode = getDoctorExitCode(result);
-  });
-
   program
+    .command('doctor')
+    .description('diagnose identity, remote, and SSH auth alignment')
+    .addHelpText(
+      'after',
+      `
+
+Checks:
+  - effective git identity
+  - repository context and branch
+  - origin remote configuration
+  - SSH auth alignment for SSH remotes
+
+Example:
+  $ gitrole doctor
+`
+    )
+    .action(async () => {
+      const result = await doctor(dependencies);
+      io.stdout(renderDoctor(result));
+      commandExitCode = getDoctorExitCode(result);
+    });
+
+  const remoteCommand = program
     .command('remote')
     .description('manage repository remotes for a selected role')
+    .addHelpText(
+      'after',
+      `
+
+Use 'gitrole remote use <role>' when the current origin host alias is wrong
+for the selected role.
+`
+    );
+
+  remoteCommand
     .command('use')
-    .argument('<name>', 'role name')
+    .description("rewrite origin to the role's GitHub host alias")
+    .argument('<name>', 'saved role name')
+    .addHelpText(
+      'after',
+      `
+
+Behavior:
+  - rewrites the origin host to the role's configured GitHub host alias
+  - preserves the observed owner/repository slug
+  - intended for SSH remotes
+
+Example:
+  $ gitrole remote use work
+`
+    )
     .action(async (name: string) => {
       const result = await useRemoteForRole(dependencies, name);
       io.stdout(renderRemoteUse(result));
     });
 
-  program.command('remove').argument('<name>', 'role name').action(async (name: string) => {
-    const role = await removeRole(dependencies, name);
-    io.stdout(renderRemovedRole(role));
-  });
+  program
+    .command('remove')
+    .description('remove a saved role')
+    .argument('<name>', 'saved role name')
+    .action(async (name: string) => {
+      const role = await removeRole(dependencies, name);
+      io.stdout(renderRemovedRole(role));
+    });
 
   Reflect.set(program, '__gitroleExitCode', () => commandExitCode);
 
