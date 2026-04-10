@@ -428,6 +428,7 @@ test('doctor aligns commit identity, remote metadata, and SSH auth', async () =>
   const result = await doctor(dependencies);
 
   assert.equal(result.role?.name, 'work');
+  assert.equal(result.overall, 'aligned');
   assert.equal(result.commitIdentity.fullName.source, 'global');
   assert.equal(result.repository.remote?.owner, 'synsoftworksdev');
   assert.equal(result.sshAuth?.githubUser, 'synsoftworksdev');
@@ -532,6 +533,7 @@ test('doctor reports local scope when repo-local identity overrides are active',
   const result = await doctor(dependencies);
   const status = await getStatus(dependencies);
 
+  assert.equal(result.overall, 'aligned');
   assert.equal(result.scope.effective, 'local');
   assert.equal(result.scope.hasLocalOverride, true);
   assert.equal(
@@ -628,6 +630,7 @@ test('doctor warns when HTTPS remotes prevent SSH auth verification', async () =
   const result = await doctor(dependencies);
 
   assert.equal(result.repository.remote?.protocol, 'https');
+  assert.equal(result.overall, 'warning');
   assert.equal(getDoctorExitCode(result), 2);
   assert.equal(
     result.checks.some(
@@ -800,6 +803,7 @@ test('doctor adds a fix hint when no saved role matches the active commit identi
   const result = await doctor(dependencies);
 
   assert.equal(result.role, undefined);
+  assert.equal(result.overall, 'warning');
   assert.equal(
     result.checks.some(
       (check) =>

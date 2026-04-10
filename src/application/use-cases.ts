@@ -133,8 +133,11 @@ export interface DoctorCheck {
   message: string;
 }
 
+export type OverallStatus = 'aligned' | 'warning' | 'error';
+
 export interface DoctorResult {
   role?: Role;
+  overall: OverallStatus;
   commitIdentity: {
     fullName: DiagnosedValue;
     email: DiagnosedValue;
@@ -385,6 +388,7 @@ export async function doctor(
 
   return {
     role,
+    overall: getDoctorOverall({ checks }),
     commitIdentity: observedState.commitIdentity,
     configuredIdentity: observedState.configuredIdentity,
     scope: observedState.scope,
@@ -454,7 +458,7 @@ export async function getStatus(
     commitIdentity,
     scope: result.scope.effective,
     localOverride: result.scope.hasLocalOverride,
-    overall: getDoctorExitCode(result) === 0 ? 'aligned' : 'warning',
+    overall: getDoctorOverall(result),
     commit: getCheckGroupStatus(result.checks, ['role', 'commit', 'identity', 'fix', 'scope']),
     remote: getRemoteStatus(result),
     auth: getAuthStatus(result)
@@ -463,6 +467,12 @@ export async function getStatus(
 
 export function getDoctorExitCode(result: Pick<DoctorResult, 'checks'>): number {
   return result.checks.some((check) => check.status === 'warn') ? 2 : 0;
+}
+
+export function getDoctorOverall(
+  result: Pick<DoctorResult, 'checks'>
+): Exclude<OverallStatus, 'error'> {
+  return result.checks.some((check) => check.status === 'warn') ? 'warning' : 'aligned';
 }
 
 function diagnoseValue(localValue?: string, globalValue?: string): DiagnosedValue {

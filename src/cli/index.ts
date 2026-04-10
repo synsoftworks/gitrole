@@ -252,6 +252,7 @@ Examples:
   program
     .command('doctor')
     .description('diagnose identity, remote, and SSH auth alignment')
+    .option('--json', 'write the diagnostic result as JSON')
     .addHelpText(
       'after',
       `
@@ -264,11 +265,12 @@ Checks:
 
 Example:
   $ gitrole doctor
+  $ gitrole doctor --json
 `
     )
-    .action(async () => {
+    .action(async (options: { json?: boolean }) => {
       const result = await doctor(dependencies);
-      io.stdout(renderDoctor(result));
+      io.stdout(options.json ? JSON.stringify(result, null, 2) : renderDoctor(result));
       commandExitCode = getDoctorExitCode(result);
     });
 
