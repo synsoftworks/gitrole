@@ -44,6 +44,10 @@ export interface AppDependencies {
   sshAgent: SshAgent;
 }
 
+export interface CurrentRoleDependencies extends AppDependencies {
+  repository?: Pick<GitRepository, 'getLocalUserName' | 'getLocalUserEmail'>;
+}
+
 export interface GitRepository {
   isInsideWorkTree(): Promise<boolean>;
   hasCommits(): Promise<boolean>;
@@ -54,6 +58,8 @@ export interface GitRepository {
   setOriginUrl(url: string): Promise<void>;
   getLocalUserName(): Promise<string | undefined>;
   getLocalUserEmail(): Promise<string | undefined>;
+  setLocalUserName(name: string): Promise<void>;
+  setLocalUserEmail(email: string): Promise<void>;
 }
 
 export interface SshAuthProbeResult {
@@ -86,6 +92,7 @@ export interface RemoteUseDependencies {
 
 export interface UseRoleResult {
   role: Role;
+  scope: UseScope;
   ssh?: SshLoadResult & { path: string };
   alignment?: RoleAlignmentResult;
 }
@@ -105,6 +112,21 @@ export interface DiagnosedValue {
   source: 'local' | 'global' | 'unset';
 }
 
+export type UseScope = 'global' | 'local';
+export type EffectiveConfigScope = UseScope | 'mixed' | 'unset';
+
+/**
+ * Describes where the effective commit identity is coming from.
+ *
+ * `effective` reports the aggregate source for the current name/email pair.
+ * `hasLocalOverride` is true when either field is currently sourced from
+ * repository-local config.
+ */
+export interface IdentityScopeResult {
+  effective: EffectiveConfigScope;
+  hasLocalOverride: boolean;
+}
+
 export interface DoctorCheck {
   status: 'ok' | 'warn' | 'info';
   label: string;
@@ -117,6 +139,11 @@ export interface DoctorResult {
     fullName: DiagnosedValue;
     email: DiagnosedValue;
   };
+  configuredIdentity: {
+    local: GitIdentity;
+    global: GitIdentity;
+  };
+  scope: IdentityScopeResult;
   repository: {
     isInsideWorkTree: boolean;
     hasCommits?: boolean;
@@ -133,6 +160,7 @@ export interface RoleAlignmentResult {
   role: Role;
   repository: DoctorResult['repository'];
   commitIdentity: DoctorResult['commitIdentity'];
+  scope: IdentityScopeResult;
   sshAuth?: SshAuthProbeResult;
   checks: DoctorCheck[];
 }
@@ -146,10 +174,20 @@ export interface RemoteUseResult {
 export interface StatusResult {
   roleName: string;
   commitIdentity?: string;
+  scope: EffectiveConfigScope;
+  localOverride: boolean;
   overall: 'aligned' | 'warning';
   commit: 'ok' | 'warn' | 'na';
   remote: 'ok' | 'warn' | 'na';
   auth: 'ok' | 'warn' | 'na';
+}
+
+/**
+ * Controls whether a role switch applies to global Git config or the current
+ * repository's local config.
+ */
+export interface UseRoleOptions {
+  scope?: UseScope;
 }
 
 export class RoleMissingGithubHostError extends Error {
@@ -170,6 +208,13 @@ export class UnsupportedRemoteRewriteError extends Error {
   constructor() {
     super('origin remote could not be rewritten because its owner/repository could not be determined');
     this.name = 'UnsupportedRemoteRewriteError';
+  }
+}
+
+export class NotInGitRepositoryError extends Error {
+  constructor() {
+    super('not inside a git repository; --local requires a repo context');
+    this.name = 'NotInGitRepositoryError';
   }
 }
 
@@ -196,24 +241,40 @@ export async function addRole(
  * Git identity changes are the primary operation. SSH key loading is a best-effort
  * follow-up and does not block a successful switch when `ssh-add` fails.
  *
+ * When `scope` is `local`, the selected role is applied to the current repository
+ * only. Without a scope option, the existing global behavior is preserved.
+ *
  * @throws {ProfileNotFoundError} When the named role does not exist.
+ * @throws {NotInGitRepositoryError} When `scope` is `local` outside a Git repository.
  */
 export async function useRole(
   dependencies: UseRoleDependencies,
-  name: string
+  name: string,
+  options: UseRoleOptions = {}
 ): Promise<UseRoleResult> {
   const role = await dependencies.roleStore.get(name);
+  const scope = options.scope ?? 'global';
 
   if (!role) {
     throw new ProfileNotFoundError(name);
   }
 
-  await dependencies.gitConfig.setGlobalUserName(role.fullName);
-  await dependencies.gitConfig.setGlobalUserEmail(role.email);
+  if (scope === 'local') {
+    if (!dependencies.repository || !(await dependencies.repository.isInsideWorkTree())) {
+      throw new NotInGitRepositoryError();
+    }
+
+    await dependencies.repository.setLocalUserName(role.fullName);
+    await dependencies.repository.setLocalUserEmail(role.email);
+  } else {
+    await dependencies.gitConfig.setGlobalUserName(role.fullName);
+    await dependencies.gitConfig.setGlobalUserEmail(role.email);
+  }
 
   if (!role.sshKeyPath) {
     return {
       role,
+      scope,
       alignment: await maybeAssessRoleAlignment(dependencies, role)
     };
   }
@@ -222,6 +283,7 @@ export async function useRole(
 
   return {
     role,
+    scope,
     ssh: {
       ...ssh,
       path: role.sshKeyPath
@@ -231,19 +293,28 @@ export async function useRole(
 }
 
 /**
- * Reads the current global Git identity and resolves it to a saved role when
- * both name and email match exactly.
+ * Reads the effective Git identity for the current context and resolves it to a
+ * saved role when both name and email match exactly.
+ *
+ * When repository-local overrides are available, they take precedence over the
+ * global identity because they are what Git will actually use for commits in
+ * the current repository.
  */
 export async function getCurrentRole(
-  dependencies: AppDependencies
+  dependencies: CurrentRoleDependencies
 ): Promise<CurrentRoleResult> {
-  const [roles, fullName, email] = await Promise.all([
+  const [roles, globalName, globalEmail, localName, localEmail] = await Promise.all([
     dependencies.roleStore.list(),
     dependencies.gitConfig.getGlobalUserName(),
-    dependencies.gitConfig.getGlobalUserEmail()
+    dependencies.gitConfig.getGlobalUserEmail(),
+    dependencies.repository?.getLocalUserName(),
+    dependencies.repository?.getLocalUserEmail()
   ]);
 
-  const identity = { fullName, email };
+  const identity = {
+    fullName: localName ?? globalName,
+    email: localEmail ?? globalEmail
+  };
   const role = roles.find((candidate) => matchesIdentity(candidate, identity));
 
   return { identity, role };
@@ -253,7 +324,7 @@ export async function getCurrentRole(
  * Lists all saved roles and marks which one is currently active, if any.
  */
 export async function listRoles(
-  dependencies: AppDependencies
+  dependencies: CurrentRoleDependencies
 ): Promise<ListRolesResult> {
   const [roles, current] = await Promise.all([
     dependencies.roleStore.list(),
@@ -315,6 +386,8 @@ export async function doctor(
   return {
     role,
     commitIdentity: observedState.commitIdentity,
+    configuredIdentity: observedState.configuredIdentity,
+    scope: observedState.scope,
     repository: observedState.repository,
     sshAuth: observedState.sshAuth,
     checks
@@ -379,8 +452,10 @@ export async function getStatus(
   return {
     roleName: result.role?.name ?? 'no-role',
     commitIdentity,
+    scope: result.scope.effective,
+    localOverride: result.scope.hasLocalOverride,
     overall: getDoctorExitCode(result) === 0 ? 'aligned' : 'warning',
-    commit: getCheckGroupStatus(result.checks, ['role', 'commit', 'identity', 'fix']),
+    commit: getCheckGroupStatus(result.checks, ['role', 'commit', 'identity', 'fix', 'scope']),
     remote: getRemoteStatus(result),
     auth: getAuthStatus(result)
   };
@@ -449,6 +524,14 @@ function buildDoctorChecks(input: {
       status: 'warn',
       label: 'commit',
       message: 'user.name or user.email is not fully configured'
+    });
+  }
+
+  if (observedState.scope.effective === 'mixed') {
+    checks.push({
+      status: 'warn',
+      label: 'scope',
+      message: 'effective commit identity mixes local and global Git config sources'
     });
   }
 
@@ -522,6 +605,20 @@ function buildRoleAlignmentChecks(input: {
 }): DoctorCheck[] {
   const checks: DoctorCheck[] = [];
   const { role, observedState } = input;
+
+  if (observedState.scope.effective === 'mixed') {
+    checks.push({
+      status: 'warn',
+      label: 'scope',
+      message: `selected role ${role.name} is split across local and global config sources`
+    });
+  } else if (observedState.scope.effective === 'local' || observedState.scope.effective === 'global') {
+    checks.push({
+      status: 'ok',
+      label: 'scope',
+      message: `selected role ${role.name} is applied via ${observedState.scope.effective} config`
+    });
+  }
 
   if (
     observedState.commitIdentity.fullName.value !== role.fullName ||
@@ -654,6 +751,7 @@ async function assessRoleAlignment(
   return {
     role,
     commitIdentity: observedState.commitIdentity,
+    scope: observedState.scope,
     repository: observedState.repository,
     sshAuth: observedState.sshAuth,
     checks: buildRoleAlignmentChecks({ role, observedState })
@@ -662,6 +760,8 @@ async function assessRoleAlignment(
 
 interface ObservedState {
   commitIdentity: DoctorResult['commitIdentity'];
+  configuredIdentity: DoctorResult['configuredIdentity'];
+  scope: IdentityScopeResult;
   repository: DoctorResult['repository'];
   sshAuth?: SshAuthProbeResult;
 }
@@ -698,12 +798,24 @@ async function collectObservedState(
     remote?.protocol === 'ssh' && remote.host
       ? await dependencies.sshAuthProbe.probeGithubUser(remote.host)
       : undefined;
+  const commitIdentity = {
+    fullName: diagnoseValue(localName, globalName),
+    email: diagnoseValue(localEmail, globalEmail)
+  };
 
   return {
-    commitIdentity: {
-      fullName: diagnoseValue(localName, globalName),
-      email: diagnoseValue(localEmail, globalEmail)
+    commitIdentity,
+    configuredIdentity: {
+      local: {
+        fullName: localName,
+        email: localEmail
+      },
+      global: {
+        fullName: globalName,
+        email: globalEmail
+      }
     },
+    scope: detectIdentityScope(commitIdentity),
     repository: {
       isInsideWorkTree,
       hasCommits: isInsideWorkTree ? hasCommits : undefined,
@@ -780,4 +892,36 @@ function getAuthStatus(result: DoctorResult): 'ok' | 'warn' | 'na' {
   return result.checks.some((check) => check.label === 'auth' && check.status === 'warn')
     ? 'warn'
     : 'ok';
+}
+
+function detectIdentityScope(identity: DoctorResult['commitIdentity']): IdentityScopeResult {
+  const sources = [identity.fullName.source, identity.email.source];
+
+  if (sources.every((source) => source === 'unset')) {
+    return {
+      effective: 'unset',
+      hasLocalOverride: false
+    };
+  }
+
+  const hasLocalOverride = sources.includes('local');
+
+  if (sources.every((source) => source === 'local')) {
+    return {
+      effective: 'local',
+      hasLocalOverride
+    };
+  }
+
+  if (sources.every((source) => source === 'global')) {
+    return {
+      effective: 'global',
+      hasLocalOverride
+    };
+  }
+
+  return {
+    effective: 'mixed',
+    hasLocalOverride
+  };
 }

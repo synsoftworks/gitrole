@@ -59,10 +59,20 @@ test('git repository adapter reads repository state', async () => {
   );
   assert.equal(await adapter.getLocalUserName(), 'Sara Loera');
   assert.equal(await adapter.getLocalUserEmail(), 'sara@synthesissoftworks.com');
+  await adapter.setLocalUserName('Alex Developer');
+  await adapter.setLocalUserEmail('alex@work.example');
 
   await adapter.setOriginUrl('git@github.com-synsoftworksdev:synsoftworksdev/gitrole.git');
 
   assert.equal(calls[0]?.file, 'git');
+  assert.deepEqual(calls.at(-3), {
+    file: 'git',
+    args: ['config', '--local', 'user.name', 'Alex Developer']
+  });
+  assert.deepEqual(calls.at(-2), {
+    file: 'git',
+    args: ['config', '--local', 'user.email', 'alex@work.example']
+  });
   assert.deepEqual(calls.at(-1), {
     file: 'git',
     args: ['remote', 'set-url', 'origin', 'git@github.com-synsoftworksdev:synsoftworksdev/gitrole.git']

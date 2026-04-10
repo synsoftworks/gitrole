@@ -81,6 +81,14 @@ export class SystemGitRepository {
     return this.getOptionalValue(['config', '--local', '--get', 'user.email']);
   }
 
+  async setLocalUserName(name: string): Promise<void> {
+    await this.run(['config', '--local', 'user.name', name]);
+  }
+
+  async setLocalUserEmail(email: string): Promise<void> {
+    await this.run(['config', '--local', 'user.email', email]);
+  }
+
   private async getOptionalValue(args: string[]): Promise<string | undefined> {
     try {
       const result = await this.run(args);
