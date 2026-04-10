@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { chmod, mkdtemp, readFile, symlink, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -18,6 +18,7 @@ test('cli help text includes the primary commands', () => {
   assert.match(result.stdout, /current \[options\]/);
   assert.match(result.stdout, /doctor/);
   assert.match(result.stdout, /remote/);
+  assert.match(result.stdout, /status/);
   assert.equal(result.stderr, '');
 });
 
@@ -161,6 +162,213 @@ process.exit(1);
   assert.equal(result.status, 2);
   assert.match(result.stdout, /^current/m);
   assert.doesNotMatch(result.stdout, /^doctor/m);
+  assert.equal(result.stderr, '');
+});
+
+test('cli status exits with code 2 and prints a compact warning summary when misaligned', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-cli-status-'));
+  const configHome = path.join(tempDir, 'config');
+  const gitStubPath = path.join(tempDir, 'git-stub.mjs');
+  const sshStubPath = path.join(tempDir, 'ssh-stub.mjs');
+
+  await writeFile(
+    gitStubPath,
+    `#!/usr/bin/env node
+const args = process.argv.slice(2);
+if (args[0] === 'config' && args[1] === '--global' && args[2] === '--get' && args[3] === 'user.name') {
+  process.stdout.write('Pat Person\\n');
+  process.exit(0);
+}
+if (args[0] === 'config' && args[1] === '--global' && args[2] === '--get' && args[3] === 'user.email') {
+  process.stdout.write('pat@personal.example\\n');
+  process.exit(0);
+}
+if (args[0] === 'config' && args[1] === '--local' && args[2] === '--get') {
+  process.exit(1);
+}
+if (args[0] === 'rev-parse' && args[1] === '--is-inside-work-tree') {
+  process.stdout.write('true\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args[1] === '--verify') {
+  process.stdout.write('abcdef0\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args[1] === '--show-toplevel') {
+  process.stdout.write('${tempDir.replaceAll("'", "'\\''")}\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args.includes('@{upstream}')) {
+  process.stdout.write('origin/main\\n');
+  process.exit(0);
+}
+if (args[0] === 'branch' && args[1] === '--show-current') {
+  process.stdout.write('main\\n');
+  process.exit(0);
+}
+if (args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'origin') {
+  process.stdout.write('git@github.com-acme-dev:acme-dev/gitrole.git\\n');
+  process.exit(0);
+}
+process.exit(1);
+`,
+    'utf8'
+  );
+  await chmod(gitStubPath, 0o755);
+
+  await writeFile(
+    sshStubPath,
+    `#!/usr/bin/env node
+process.stderr.write("Hi acme-dev! You've successfully authenticated, but GitHub does not provide shell access.\\n");
+process.exit(1);
+`,
+    'utf8'
+  );
+  await chmod(sshStubPath, 0o755);
+
+  await mkdir(path.join(configHome, 'gitrole'), { recursive: true });
+
+  await writeFile(
+    path.join(configHome, 'gitrole', 'roles.json'),
+    JSON.stringify(
+      {
+        roles: [
+          {
+            name: 'work',
+            fullName: 'Alex Developer',
+            email: 'alex@work.example',
+            githubUser: 'acme-dev',
+            githubHost: 'github.com-acme-dev'
+          }
+        ]
+      },
+      null,
+      2
+    ),
+    'utf8'
+  );
+
+  const env = {
+    ...process.env,
+    HOME: tempDir,
+    XDG_CONFIG_HOME: configHome,
+    GITROLE_GIT_BIN: gitStubPath,
+    GITROLE_SSH_BIN: sshStubPath
+  };
+
+  const result = spawnSync(process.execPath, [cliPath, 'status'], {
+    encoding: 'utf8',
+    env
+  });
+
+  assert.equal(result.status, 2);
+  assert.match(result.stdout, /no-role/);
+  assert.match(result.stdout, /warning/);
+  assert.equal(result.stderr, '');
+});
+
+test('cli status --short prints machine-friendly status output', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-cli-status-short-'));
+  const configHome = path.join(tempDir, 'config');
+  const gitStubPath = path.join(tempDir, 'git-stub.mjs');
+  const sshStubPath = path.join(tempDir, 'ssh-stub.mjs');
+
+  await writeFile(
+    gitStubPath,
+    `#!/usr/bin/env node
+const args = process.argv.slice(2);
+if (args[0] === 'config' && args[1] === '--global' && args[2] === '--get' && args[3] === 'user.name') {
+  process.stdout.write('Alex Developer\\n');
+  process.exit(0);
+}
+if (args[0] === 'config' && args[1] === '--global' && args[2] === '--get' && args[3] === 'user.email') {
+  process.stdout.write('alex@work.example\\n');
+  process.exit(0);
+}
+if (args[0] === 'config' && args[1] === '--local' && args[2] === '--get') {
+  process.exit(1);
+}
+if (args[0] === 'rev-parse' && args[1] === '--is-inside-work-tree') {
+  process.stdout.write('true\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args[1] === '--verify') {
+  process.stdout.write('abcdef0\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args[1] === '--show-toplevel') {
+  process.stdout.write('${tempDir.replaceAll("'", "'\\''")}\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args.includes('@{upstream}')) {
+  process.stdout.write('origin/main\\n');
+  process.exit(0);
+}
+if (args[0] === 'branch' && args[1] === '--show-current') {
+  process.stdout.write('main\\n');
+  process.exit(0);
+}
+if (args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'origin') {
+  process.stdout.write('git@github.com-acme-dev:acme-dev/gitrole.git\\n');
+  process.exit(0);
+}
+process.exit(1);
+`,
+    'utf8'
+  );
+  await chmod(gitStubPath, 0o755);
+
+  await writeFile(
+    sshStubPath,
+    `#!/usr/bin/env node
+process.stderr.write("Hi acme-dev! You've successfully authenticated, but GitHub does not provide shell access.\\n");
+process.exit(1);
+`,
+    'utf8'
+  );
+  await chmod(sshStubPath, 0o755);
+
+  await mkdir(path.join(configHome, 'gitrole'), { recursive: true });
+
+  await writeFile(
+    path.join(configHome, 'gitrole', 'roles.json'),
+    JSON.stringify(
+      {
+        roles: [
+          {
+            name: 'work',
+            fullName: 'Alex Developer',
+            email: 'alex@work.example',
+            githubUser: 'acme-dev',
+            githubHost: 'github.com-acme-dev'
+          }
+        ]
+      },
+      null,
+      2
+    ),
+    'utf8'
+  );
+
+  const env = {
+    ...process.env,
+    HOME: tempDir,
+    XDG_CONFIG_HOME: configHome,
+    GITROLE_GIT_BIN: gitStubPath,
+    GITROLE_SSH_BIN: sshStubPath
+  };
+
+  const result = spawnSync(process.execPath, [cliPath, 'status', '--short'], {
+    encoding: 'utf8',
+    env
+  });
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /role=work/);
+  assert.match(result.stdout, /commit=ok/);
+  assert.match(result.stdout, /remote=ok/);
+  assert.match(result.stdout, /auth=ok/);
+  assert.match(result.stdout, /overall=aligned/);
   assert.equal(result.stderr, '');
 });
 
