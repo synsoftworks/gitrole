@@ -1,15 +1,94 @@
-# gitrole
+<h1 align="center">gitrole</h1>
 
-`gitrole` is a focused CLI for developers who switch between multiple Git identities.
+<p align="center">
+  Switch your git identity in one command.
+</p>
 
-It stores named roles such as `work`, `personal`, or `client-acme`, then applies the selected identity to your global Git config in one command.
+`gitrole` is a focused CLI for developers who move between multiple Git identities such as work, personal, client, and open source roles. It stores named roles, applies the selected Git identity to your global config, and helps diagnose whether your current repo and SSH auth path are aligned before you push.
 
-In v0.2.0 it also adds a repo-aware `doctor` command so you can inspect the gap between:
+<p align="center">
+  <a href="https://www.npmjs.com/package/gitrole"><img alt="npm version" src="https://img.shields.io/npm/v/gitrole?style=flat-square"></a>
+  <a href="https://www.npmjs.com/package/gitrole"><img alt="npm downloads" src="https://img.shields.io/npm/dm/gitrole?style=flat-square"></a>
+  <a href="https://nodejs.org/"><img alt="node version" src="https://img.shields.io/node/v/gitrole?style=flat-square"></a>
+  <a href="https://github.com/synsoftworks/gitrole/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/synsoftworks/gitrole?style=flat-square"></a>
+</p>
 
-- the saved role you expect
-- the Git identity your commits will use
-- the repo remote you are about to push to
-- the SSH auth identity GitHub will likely see for SSH pushes
+## Quickstart
+
+```bash
+npm install -g gitrole
+
+gitrole add work \
+  --name "Alex Developer" \
+  --email "alex@work.example" \
+  --ssh ~/.ssh/id_work \
+  --github-user acme-dev \
+  --github-host github.com-acme-dev
+
+gitrole use work
+gitrole doctor
+```
+
+## What It Does
+
+- Stores named Git identity profiles
+- Switches global `user.name`
+- Switches global `user.email`
+- Optionally loads an SSH key with `ssh-add`
+- Shows which saved role matches the active commit identity
+- Diagnoses repo, remote, and SSH push alignment with `gitrole doctor`
+- Can rewrite `origin` to a role-specific GitHub SSH host alias
+
+## What It Does Not Do
+
+- It does not switch GitHub browser sessions
+- It does not manage `gh auth`, HTTPS credentials, or tokens
+- It does not auto-detect SSH keys
+- It does not prompt interactively
+- It does not apply repo-local config yet
+
+This is intentionally a small tool with a stable boundary.
+
+## Install
+
+### Global Install
+
+```bash
+npm install -g gitrole
+```
+
+### One-Off Run
+
+```bash
+npx gitrole --help
+```
+
+## Commands
+
+| Command | Purpose |
+| --- | --- |
+| `gitrole add <name> --name "..." --email "..." [--ssh ...] [--github-user ...] [--github-host ...]` | Create or update a saved role profile. |
+| `gitrole use <name>` | Switch global Git identity to the selected role and optionally load its SSH key. |
+| `gitrole current` | Show which saved role matches the active Git commit identity. |
+| `gitrole current --verbose` | Show the current role plus repository and auth diagnostics. |
+| `gitrole list` | List all saved roles and mark the active one. |
+| `gitrole doctor` | Diagnose commit identity, remote configuration, and SSH push identity. |
+| `gitrole remote use <name>` | Rewrite `origin` to the selected role's GitHub host alias. |
+| `gitrole remove <name>` | Remove a saved role profile. |
+
+## SSH Host Aliases
+
+For deterministic GitHub SSH identity, define host aliases in `~/.ssh/config`:
+
+```sshconfig
+Host github.com-acme-dev
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/id_work
+  IdentitiesOnly yes
+```
+
+Then `gitrole remote use work` can rewrite `origin` to use that alias.
 
 ## Why
 
@@ -35,63 +114,14 @@ ssh-add ~/.ssh/id_whatever
 gitrole use work
 ```
 
-## What It Does
-
-- Stores named Git identity profiles
-- Switches global `user.name`
-- Switches global `user.email`
-- Optionally loads an SSH key with `ssh-add`
-- Shows the currently active role when it exactly matches a saved profile
-- Diagnoses the current repository, `origin`, and SSH push identity with `gitrole doctor`
-
-## What It Does Not Do
-
-- It does not switch GitHub sessions or browser logins
-- It does not manage HTTPS credentials or access tokens
-- It does not manage `gh auth`, browser sessions, or GitHub account sessions for you
-- It does not auto-detect SSH keys
-- It does not prompt interactively
-- It does not apply repo-local config yet
-
-This is intentionally a small tool with a stable boundary.
-
-## Requirements
-
-- Node.js 20+
-- npm
-- Git available on `PATH`
-- `ssh-add` available on `PATH` if you want SSH key loading
-
-## Install
-
-### Local Development
-
-```bash
-npm install
-npm run build
-```
-
-### Run Without Installing Globally
-
-```bash
-node dist/cli/index.js --help
-```
-
-### Optional Local Link
-
-If you want to invoke it as `gitrole` during development:
-
-```bash
-npm link
-gitrole --help
-```
+In v0.2.0, `gitrole doctor` helps detect when your commit identity, repo remote, and SSH push identity are out of alignment.
 
 ## Configuration
 
 Roles are stored as JSON using the XDG config convention:
 
 - `$XDG_CONFIG_HOME/gitrole/roles.json`
-- or `~/.config/gitrole/roles.json` when `XDG_CONFIG_HOME` is not set
+- `~/.config/gitrole/roles.json` when `XDG_CONFIG_HOME` is not set
 
 The file is created automatically on first use.
 
@@ -119,17 +149,6 @@ Example:
 
 ## Usage
 
-| Command | Purpose |
-| --- | --- |
-| `gitrole add <name> --name "..." --email "..." [--ssh ...] [--github-user ...] [--github-host ...]` | Create or update a saved role profile. |
-| `gitrole use <name>` | Switch global Git identity to the selected role and optionally load its SSH key. |
-| `gitrole current` | Show which saved role matches the active Git commit identity. |
-| `gitrole current --verbose` | Show the current role plus repository and auth diagnostics. |
-| `gitrole list` | List all saved roles and mark the active one. |
-| `gitrole doctor` | Diagnose commit identity, remote configuration, and SSH push identity. |
-| `gitrole remote use <name>` | Rewrite `origin` to the selected role's GitHub host alias. |
-| `gitrole remove <name>` | Remove a saved role profile. |
-
 ### Add a Role
 
 ```bash
@@ -151,7 +170,7 @@ gitrole add personal \
 
 If a role with the same name already exists, it is updated in place.
 
-`--github-user` and `--github-host` are optional. They are used by `gitrole doctor` to compare the active repository and SSH auth path against the role you intended to use.
+`--github-user` and `--github-host` are optional. They are used by `gitrole doctor` and `gitrole remote use` to compare and align the active repository against the role you intended to use.
 
 ### Switch to a Role
 
@@ -181,13 +200,22 @@ switched to work
 
 If `ssh-add` fails, the Git identity still changes and the warning is sent to stderr.
 
+When you run `gitrole use <role>` inside a Git repository, `gitrole` also performs a best-effort repo alignment check and warns when:
+
+- repo-local Git config overrides the selected role
+- `origin` uses the wrong SSH host alias
+- the remote owner does not match the role
+- SSH auth resolves to a different GitHub user
+- the repo uses HTTPS, so SSH auth cannot be verified
+- the repository has no commits yet
+
 ### Show the Current Role
 
 ```bash
 gitrole current
 ```
 
-`current` reads the active global Git identity and compares it to saved roles.
+`current` is role-focused. It tells you whether the effective Git commit identity matches one of your saved profiles.
 
 A role is considered active only when both of these match exactly:
 
@@ -196,13 +224,13 @@ A role is considered active only when both of these match exactly:
 
 If no saved role matches, `gitrole` prints `no matching role`.
 
-For repo-aware diagnostics from the current command surface:
+For repo-aware diagnostics:
 
 ```bash
 gitrole current --verbose
 ```
 
-This runs the same repository and auth checks as `gitrole doctor`.
+`current --verbose` is diagnostic. It includes the same repository and auth checks as `gitrole doctor`.
 
 ### List Saved Roles
 
@@ -218,14 +246,6 @@ Example:
 * work Alex Developer <alex@work.example> ~/.ssh/id_work
   personal Alex Developer <alex@personal.example>
 ```
-
-### Remove a Role
-
-```bash
-gitrole remove personal
-```
-
-This removes the saved profile from `roles.json`. It does not change your current global Git config.
 
 ### Diagnose the Current Repository
 
@@ -267,7 +287,7 @@ checks
   ok   auth   SSH auth matches role githubUser acme-dev
 ```
 
-For HTTPS remotes, `doctor` will tell you that SSH auth cannot be verified.
+For HTTPS remotes, `doctor` reports that SSH auth cannot be verified.
 
 Exit behavior:
 
@@ -291,26 +311,13 @@ updated remote origin for work
   to   git@github.com-acme-dev:acme-dev/gitrole.git
 ```
 
-This is the correction step for the common failure mode where:
-
-- commit identity looks correct
-- the repo remote still points at the wrong SSH host
-- pushes authenticate as the wrong GitHub account
-
-### Repo-Aware Warnings During `use`
+### Remove a Role
 
 ```bash
-gitrole use work
+gitrole remove personal
 ```
 
-After switching global Git identity, `gitrole` now performs a best-effort repo alignment check when you are inside a Git repository. It warns to stderr when it detects issues such as:
-
-- repo-local Git config overriding the selected role
-- `origin` using the wrong SSH host alias
-- remote owner mismatch against the selected role
-- SSH auth resolving to a different GitHub user
-- HTTPS remotes that prevent SSH auth verification
-- repositories with no commits yet
+This removes the saved profile from `roles.json`. It does not change your current global Git config.
 
 ## Examples
 
@@ -332,9 +339,22 @@ gitrole add acme --name "Alex Developer" --email "alex@client.example" --ssh ~/.
 gitrole use acme
 ```
 
-## Testing
+## Development
 
-Run the automated checks:
+```bash
+npm install
+npm run build
+npm link
+gitrole --help
+```
+
+For local execution without linking:
+
+```bash
+node dist/cli/index.js --help
+```
+
+## Testing
 
 ```bash
 npm test
@@ -362,20 +382,6 @@ HOME="$TMP_HOME" XDG_CONFIG_HOME="$TMP_HOME/config" node dist/cli/index.js list
 - Config file missing: created automatically
 - `doctor`: exits with `2` when warnings or mismatches are found
 
-## Architecture
-
-The codebase is intentionally split into small layers:
-
-- [src/cli/index.ts](/Users/slodev/Work/gitrole/src/cli/index.ts): Commander wiring and process exit behavior
-- [src/application/use-cases.ts](/Users/slodev/Work/gitrole/src/application/use-cases.ts): core application behavior
-- [src/domain/role.ts](/Users/slodev/Work/gitrole/src/domain/role.ts): role model and identity matching rules
-- [src/adapters/role-store.ts](/Users/slodev/Work/gitrole/src/adapters/role-store.ts): JSON config persistence
-- [src/adapters/git-config.ts](/Users/slodev/Work/gitrole/src/adapters/git-config.ts): Git integration
-- [src/adapters/git-repository.ts](/Users/slodev/Work/gitrole/src/adapters/git-repository.ts): repository and remote inspection
-- [src/adapters/ssh-agent.ts](/Users/slodev/Work/gitrole/src/adapters/ssh-agent.ts): SSH key loading
-- [src/adapters/ssh-auth.ts](/Users/slodev/Work/gitrole/src/adapters/ssh-auth.ts): SSH auth probing for GitHub
-- [src/interface/renderer.ts](/Users/slodev/Work/gitrole/src/interface/renderer.ts): plain-text output rendering
-
 ## Notes
 
 - `gitrole` changes global Git config, not per-repository config
@@ -383,3 +389,9 @@ The codebase is intentionally split into small layers:
 - `gitrole doctor` can only verify push auth for SSH remotes, not HTTPS remotes
 - `gitrole remote use <role>` rewrites only the SSH host alias; it intentionally preserves the observed remote owner and repository name
 - If you work across identities simultaneously, repo-local switching may be a better future enhancement than more global state
+
+## Community
+
+- [Contributing](./CONTRIBUTING.md)
+- [Code of Conduct](./CODE_OF_CONDUCT.md)
+- [License](./LICENSE)
