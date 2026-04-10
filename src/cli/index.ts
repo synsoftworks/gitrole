@@ -1,24 +1,38 @@
 #!/usr/bin/env node
 
+import { realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
 import { Command } from 'commander';
 
 import {
   addRole,
+  doctor,
+  getDoctorExitCode,
+  type DoctorDependencies,
   getCurrentRole,
   GitNotInstalledError,
   listRoles,
+  OriginRemoteNotConfiguredError,
   ProfileNotFoundError,
   removeRole,
+  RoleMissingGithubHostError,
+  UnsupportedRemoteRewriteError,
   type AppDependencies,
+  useRemoteForRole,
   useRole
 } from '../application/use-cases.js';
 import { SystemGitConfig } from '../adapters/git-config.js';
+import { SystemGitRepository } from '../adapters/git-repository.js';
 import { FileRoleStore } from '../adapters/role-store.js';
 import { SystemSshAgent } from '../adapters/ssh-agent.js';
+import { SystemSshAuthProbe } from '../adapters/ssh-auth.js';
 import {
   renderCurrentRole,
+  renderDoctor,
   renderError,
   renderRemovedRole,
+  renderRemoteUse,
   renderRoleList,
   renderSavedRole,
   renderUsedRole,
@@ -54,19 +68,33 @@ export function createDependencies(): AppDependencies {
   };
 }
 
+type CliDependencies = AppDependencies & {
+  repository: DoctorDependencies['repository'];
+  sshAuthProbe: DoctorDependencies['sshAuthProbe'];
+};
+
+function createCliDependencies(): CliDependencies {
+  return {
+    ...createDependencies(),
+    repository: new SystemGitRepository(),
+    sshAuthProbe: new SystemSshAuthProbe()
+  };
+}
+
 /**
  * Builds the Commander program and wires each command to its application use case.
  */
 export function createProgram(
-  dependencies: AppDependencies = createDependencies(),
+  dependencies: CliDependencies = createCliDependencies(),
   io: Output = output
 ): Command {
   const program = new Command();
+  let commandExitCode = 0;
 
   program
     .name('gitrole')
     .description('Switch your full git identity in one command.')
-    .version('0.1.0');
+    .version('0.2.0');
 
   program
     .command('add')
@@ -74,12 +102,25 @@ export function createProgram(
     .requiredOption('--name <fullName>', 'git user.name value')
     .requiredOption('--email <email>', 'git user.email value')
     .option('--ssh <path>', 'ssh private key to load with ssh-add')
-    .action(async (name: string, options: { name: string; email: string; ssh?: string }) => {
+    .option('--github-user <githubUser>', 'expected GitHub identity for SSH pushes')
+    .option('--github-host <githubHost>', 'expected SSH host or host alias for GitHub pushes')
+    .action(async (
+      name: string,
+      options: {
+        name: string;
+        email: string;
+        ssh?: string;
+        githubUser?: string;
+        githubHost?: string;
+      }
+    ) => {
       const role = await addRole(dependencies, {
         name,
         fullName: options.name,
         email: options.email,
-        sshKeyPath: options.ssh
+        sshKeyPath: options.ssh,
+        githubUser: options.githubUser,
+        githubHost: options.githubHost
       });
 
       io.stdout(renderSavedRole(role));
@@ -92,22 +133,56 @@ export function createProgram(
     if (result.ssh && !result.ssh.ok && result.ssh.message) {
       io.stderr(renderWarning(result.ssh.message));
     }
+
+    for (const check of result.alignment?.checks ?? []) {
+      if (check.status === 'warn') {
+        io.stderr(renderWarning(check.message));
+      }
+    }
   });
 
-  program.command('current').action(async () => {
-    const result = await getCurrentRole(dependencies);
-    io.stdout(renderCurrentRole(result));
-  });
+  program
+    .command('current')
+    .option('--verbose', 'show repository and auth diagnostics')
+    .action(async (options: { verbose?: boolean }) => {
+      if (options.verbose) {
+        const result = await doctor(dependencies);
+        io.stdout(renderDoctor(result, 'current'));
+        commandExitCode = getDoctorExitCode(result);
+        return;
+      }
+
+      const result = await getCurrentRole(dependencies);
+      io.stdout(renderCurrentRole(result));
+    });
 
   program.command('list').action(async () => {
     const result = await listRoles(dependencies);
     io.stdout(renderRoleList(result));
   });
 
+  program.command('doctor').action(async () => {
+    const result = await doctor(dependencies);
+    io.stdout(renderDoctor(result));
+    commandExitCode = getDoctorExitCode(result);
+  });
+
+  program
+    .command('remote')
+    .description('manage repository remotes for a selected role')
+    .command('use')
+    .argument('<name>', 'role name')
+    .action(async (name: string) => {
+      const result = await useRemoteForRole(dependencies, name);
+      io.stdout(renderRemoteUse(result));
+    });
+
   program.command('remove').argument('<name>', 'role name').action(async (name: string) => {
     const role = await removeRole(dependencies, name);
     io.stdout(renderRemovedRole(role));
   });
+
+  Reflect.set(program, '__gitroleExitCode', () => commandExitCode);
 
   return program;
 }
@@ -123,7 +198,8 @@ export async function run(argv = process.argv): Promise<number> {
 
   try {
     await program.parseAsync(argv);
-    return 0;
+    const getExitCode = Reflect.get(program, '__gitroleExitCode') as (() => number) | undefined;
+    return getExitCode ? getExitCode() : 0;
   } catch (error) {
     output.stderr(renderError(formatError(error)));
     return 1;
@@ -131,7 +207,13 @@ export async function run(argv = process.argv): Promise<number> {
 }
 
 function formatError(error: unknown): string {
-  if (error instanceof ProfileNotFoundError || error instanceof GitNotInstalledError) {
+  if (
+    error instanceof ProfileNotFoundError ||
+    error instanceof GitNotInstalledError ||
+    error instanceof RoleMissingGithubHostError ||
+    error instanceof OriginRemoteNotConfiguredError ||
+    error instanceof UnsupportedRemoteRewriteError
+  ) {
     return error.message;
   }
 
@@ -142,10 +224,22 @@ function formatError(error: unknown): string {
   return 'unknown error';
 }
 
-const isEntrypoint = import.meta.url === new URL(process.argv[1], 'file://').href;
+const isEntrypoint = isDirectExecution(import.meta.url, process.argv[1]);
 
 if (isEntrypoint) {
   run().then((code) => {
     process.exitCode = code;
   });
+}
+
+function isDirectExecution(moduleUrl: string, argvEntry?: string): boolean {
+  if (!argvEntry) {
+    return false;
+  }
+
+  try {
+    return realpathSync(fileURLToPath(moduleUrl)) === realpathSync(argvEntry);
+  } catch {
+    return false;
+  }
 }

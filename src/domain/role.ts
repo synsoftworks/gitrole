@@ -3,6 +3,8 @@ export interface Role {
   fullName: string;
   email: string;
   sshKeyPath?: string;
+  githubUser?: string;
+  githubHost?: string;
 }
 
 export interface GitIdentity {
@@ -13,14 +15,16 @@ export interface GitIdentity {
 /**
  * Normalizes persisted role input so comparisons and storage stay stable.
  *
- * Trims all string fields and removes an empty SSH key path.
+ * Trims all string fields and removes empty optional values.
  */
 export function normalizeRole(input: Role): Role {
   return {
     name: input.name.trim(),
     fullName: input.fullName.trim(),
     email: input.email.trim(),
-    sshKeyPath: input.sshKeyPath?.trim() || undefined
+    sshKeyPath: input.sshKeyPath?.trim() || undefined,
+    githubUser: input.githubUser?.trim() || undefined,
+    githubHost: input.githubHost?.trim() || undefined
   };
 }
 
