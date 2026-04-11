@@ -6,6 +6,9 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
+process.env.NO_COLOR = '1';
+process.env.FORCE_COLOR = '0';
+
 const cliPath = fileURLToPath(new URL('../src/cli/index.js', import.meta.url));
 const packageJsonPath = fileURLToPath(new URL('../../package.json', import.meta.url));
 const readmePath = fileURLToPath(new URL('../../README.md', import.meta.url));
