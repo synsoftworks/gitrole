@@ -30,11 +30,26 @@
           <a class="header-link" href="{{ site.npmUrl }}">npm</a>
           <a class="header-link" href="{{ site.repositoryUrl }}">GitHub</a>
         </div>
+        <button
+          class="nav-toggle"
+          id="docs-nav-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="docs-sidebar"
+          aria-label="Toggle site navigation"
+          hidden
+        >
+          <span class="nav-toggle-icon" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </span>
+        </button>
       </div>
     </header>
 
     <div class="docs-shell">
-      <aside class="sidebar" aria-label="Site navigation">
+      <aside class="sidebar" id="docs-sidebar" aria-label="Site navigation">
         <div class="sidebar-group">
           <p class="sidebar-label">Overview</p>
           <a href="{{ '/' | url }}" {% if page.url == '/' %}aria-current="page"{% endif %}>
@@ -93,5 +108,51 @@
         </article>
       </main>
     </div>
+
+    <script>
+      (() => {
+        const root = document.documentElement;
+        const toggle = document.getElementById('docs-nav-toggle');
+        const sidebar = document.getElementById('docs-sidebar');
+
+        if (!toggle || !sidebar) {
+          return;
+        }
+
+        root.dataset.docsNav = 'ready';
+        toggle.hidden = false;
+
+        const setExpanded = (expanded) => {
+          toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+          root.dataset.docsNavOpen = expanded ? 'true' : 'false';
+        };
+
+        setExpanded(false);
+
+        toggle.addEventListener('click', () => {
+          setExpanded(toggle.getAttribute('aria-expanded') !== 'true');
+        });
+
+        sidebar.querySelectorAll('a').forEach((link) => {
+          link.addEventListener('click', () => {
+            if (window.innerWidth <= 960) {
+              setExpanded(false);
+            }
+          });
+        });
+
+        window.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape') {
+            setExpanded(false);
+          }
+        });
+
+        window.addEventListener('resize', () => {
+          if (window.innerWidth > 960) {
+            setExpanded(false);
+          }
+        });
+      })();
+    </script>
   </body>
 </html>
