@@ -84,11 +84,13 @@ export async function useRole(
     await dependencies.gitConfig.setGlobalUserEmail(role.email);
   }
 
+  const alignment = await assessRoleAlignmentSafely(dependencies, role);
+
   if (!role.sshKeyPath) {
     return {
       role,
       scope,
-      alignment: await maybeAssessRoleAlignment(dependencies, role)
+      alignment
     };
   }
 
@@ -101,8 +103,19 @@ export async function useRole(
       ...ssh,
       path: role.sshKeyPath
     },
-    alignment: await maybeAssessRoleAlignment(dependencies, role)
+    alignment
   };
+}
+
+async function assessRoleAlignmentSafely(
+  dependencies: UseRoleDependencies,
+  role: Role
+): Promise<UseRoleResult['alignment']> {
+  try {
+    return await maybeAssessRoleAlignment(dependencies, role);
+  } catch {
+    return undefined;
+  }
 }
 
 /**

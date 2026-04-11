@@ -106,15 +106,6 @@ export interface StatusResult {
   auth: 'ok' | 'warn' | 'na';
 }
 
-export interface VerifyResult {
-  roleName?: string;
-  identity?: string;
-  scope: EffectiveConfigScope;
-  nextCommit?: string;
-  lastNonMergeCommit?: NonMergeCommit;
-  overall: 'aligned' | 'warning';
-}
-
 export interface RoleStore {
   list(): Promise<Role[]>;
   get(name: string): Promise<Role | undefined>;

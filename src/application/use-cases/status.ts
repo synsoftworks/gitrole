@@ -2,8 +2,7 @@ import type {
   DoctorDependencies,
   DoctorResult,
   NonMergeCommit,
-  StatusResult,
-  VerifyResult
+  StatusResult
 } from '../contracts.js';
 import { doctor } from './diagnosis.js';
 
@@ -27,27 +26,6 @@ export async function getStatus(
     commit: getCheckGroupStatus(doctorResult.checks, ['role', 'commit', 'identity', 'fix', 'scope']),
     remote: getRemoteStatus(doctorResult),
     auth: getAuthStatus(doctorResult)
-  };
-}
-
-/**
- * Returns a verification-oriented view of the current effective identity and
- * latest reachable non-merge commit.
- */
-export async function verify(
-  dependencies: DoctorDependencies
-): Promise<VerifyResult> {
-  const verification = await collectVerificationContext(dependencies);
-  const { doctorResult, lastNonMergeCommit } = verification;
-  const identity = formatCommitIdentity(doctorResult.commitIdentity);
-
-  return {
-    roleName: doctorResult.role?.name,
-    identity,
-    scope: doctorResult.scope.effective,
-    nextCommit: identity,
-    lastNonMergeCommit,
-    overall: getVerifyOverall(doctorResult, lastNonMergeCommit)
   };
 }
 
@@ -132,21 +110,6 @@ function getStatusOverall(
   return 'aligned';
 }
 
-function getVerifyOverall(
-  doctorResult: DoctorResult,
-  lastNonMergeCommit?: NonMergeCommit
-): 'aligned' | 'warning' {
-  if (hasBlockingVerificationWarnings(doctorResult)) {
-    return 'warning';
-  }
-
-  if (isLastNonMergeCommitMismatch(doctorResult, lastNonMergeCommit)) {
-    return 'warning';
-  }
-
-  return 'aligned';
-}
-
 function isLastNonMergeCommitMismatch(
   doctorResult: DoctorResult,
   lastNonMergeCommit?: NonMergeCommit
@@ -160,11 +123,5 @@ function isLastNonMergeCommitMismatch(
   return (
     doctorResult.commitIdentity.fullName.value !== lastNonMergeCommit.authorName ||
     doctorResult.commitIdentity.email.value !== lastNonMergeCommit.authorEmail
-  );
-}
-
-function hasBlockingVerificationWarnings(result: DoctorResult): boolean {
-  return result.checks.some(
-    (check) => check.status === 'warn' && check.label !== 'history'
   );
 }
