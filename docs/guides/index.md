@@ -3,9 +3,6 @@ layout: layouts/base.njk
 title: Guides
 eyebrow: Guides
 summary: Start with the basic workflow guides if you are new to gitrole. They are written to get one repository working before you move into edge cases.
-toc:
-  - id: available-guides
-    label: Available guides
 ---
 
 <h2 id="available-guides">Available guides</h2>

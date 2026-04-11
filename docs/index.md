@@ -1,33 +1,8 @@
 ---
 layout: layouts/base.njk
-title: Use the right Git identity for the repo you are in
+title: Switch Git identities without guessing
 eyebrow: Overview
 summary: gitrole helps you keep work, personal, and client commits from bleeding into each other. Save a role, switch to it, and check the repo before you commit or push.
-toc:
-  - id: problem
-    label: What problem it solves
-  - id: workflow
-    label: How it works
-  - id: example
-    label: Tiny real example
-  - id: status-vs-doctor
-    label: Status vs doctor
-  - id: install
-    label: Install
-  - id: command-surface
-    label: Command quick reference
-  - id: keep-reading
-    label: Guides and use cases
-bestFor:
-  - Developers who use more than one Git identity on the same machine
-  - Repos that should use a different identity than your global Git config
-relatedLinks:
-  - label: Use the right Git identity for this repo
-    url: /guides/use-the-right-git-identity-for-this-repo/
-  - label: Fix pushes using the wrong GitHub account
-    url: /use-cases/fix-pushes-using-the-wrong-github-account/
-  - label: All guides
-    url: /guides/
 ---
 
 <div class="button-row">

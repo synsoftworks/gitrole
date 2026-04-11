@@ -3,9 +3,6 @@ layout: layouts/base.njk
 title: Use Cases
 eyebrow: Use cases
 summary: Use cases are focused scenarios for developers who already understand the basic workflow and need help with a specific problem.
-toc:
-  - id: available-use-cases
-    label: Available use cases
 ---
 
 <h2 id="available-use-cases">Available use cases</h2>

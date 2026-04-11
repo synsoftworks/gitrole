@@ -5,25 +5,6 @@ eyebrow: Use case
 summary: Use this when commits look fine but SSH pushes still authenticate as the wrong GitHub account.
 coverImage: /assets/switch-identities.svg
 order: 1
-toc:
-  - id: when-to-use-this
-    label: When to use this
-  - id: start-with-doctor
-    label: Start with doctor
-  - id: check-the-remote
-    label: Check the remote
-  - id: check-your-ssh-setup
-    label: Check your SSH setup
-  - id: confirm-the-fix
-    label: Confirm the fix
-bestFor:
-  - Developers who already switched roles but still push through the wrong GitHub account
-  - Repositories that should use a GitHub SSH host alias for one specific identity
-relatedLinks:
-  - label: Overview
-    url: /
-  - label: Use the right Git identity for this repo
-    url: /guides/use-the-right-git-identity-for-this-repo/
 ---
 
 <h2 id="when-to-use-this">When to use this</h2>

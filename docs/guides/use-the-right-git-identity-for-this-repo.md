@@ -4,27 +4,6 @@ title: Use the right Git identity for this repo
 eyebrow: Guide
 summary: Save one role per identity, switch this repo to the right one, and check that commits and pushes will use the account you expect.
 order: 1
-toc:
-  - id: what-this-solves
-    label: What this solves
-  - id: save-a-role
-    label: Save a role
-  - id: switch-this-repo
-    label: Switch this repo
-  - id: check-the-repo
-    label: Check the repo
-  - id: if-something-looks-wrong
-    label: If something looks wrong
-  - id: simple-setup
-    label: A simple setup
-bestFor:
-  - Developers who use more than one Git identity on the same machine
-  - Repositories that should use a different identity than your global Git config
-relatedLinks:
-  - label: Overview
-    url: /
-  - label: Fix pushes using the wrong GitHub account
-    url: /use-cases/fix-pushes-using-the-wrong-github-account/
 ---
 
 <h2 id="what-this-solves">What this solves</h2>
