@@ -224,6 +224,41 @@ verify
           </p>
         </section>
 
+        <section class="section two-up" id="ssh-config-vs-gitrole">
+          <div class="card">
+            <p class="section-label">Two Layers</p>
+            <h2>SSH config and gitrole solve different parts of the problem.</h2>
+            <ul class="feature-list">
+              <li><code>~/.ssh/config</code> defines how SSH connects</li>
+              <li><code>gitrole</code> defines a named git identity role</li>
+              <li><code>--ssh</code> tells <code>gitrole</code> which key to load with <code>ssh-add</code></li>
+              <li><code>--github-host</code> tells <code>gitrole</code> which SSH host alias the role expects</li>
+            </ul>
+            <p>
+              Do not copy SSH config blocks into <code>gitrole</code>. Create the SSH alias in
+              <code>~/.ssh/config</code>, then create a matching role in <code>gitrole</code>.
+            </p>
+          </div>
+
+          <div class="card">
+            <p class="section-label">Example Setup</p>
+            <h2>Create the SSH alias first, then create the role.</h2>
+            <pre><code># ~/.ssh/config
+Host github.com-personal
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/id_ed25519_personal
+  IdentitiesOnly yes
+
+gitrole add personal \
+  --name "Alex Developer" \
+  --email "alex@personal.example" \
+  --ssh ~/.ssh/id_ed25519_personal \
+  --github-user alex-dev \
+  --github-host github.com-personal</code></pre>
+          </div>
+        </section>
+
         <section class="section two-up" id="notes">
           <div class="card">
             <p class="section-label">What it does not do</p>

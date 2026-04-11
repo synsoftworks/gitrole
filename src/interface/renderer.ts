@@ -6,11 +6,12 @@ import type {
   CurrentRoleResult,
   DoctorResult,
   ListRolesResult,
+  NonMergeCommit,
   RemoteUseResult,
   StatusResult,
-  UseRoleResult
-} from '../application/use-cases.js';
-import type { NonMergeCommit, VerifyResult } from '../application/use-cases.js';
+  UseRoleResult,
+  VerifyResult
+} from '../application/contracts.js';
 import type { Role } from '../domain/role.js';
 
 export function renderSavedRole(role: Role): string {

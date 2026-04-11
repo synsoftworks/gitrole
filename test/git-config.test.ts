@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { SystemGitConfig } from '../src/adapters/git-config.js';
-import { GitNotInstalledError } from '../src/application/use-cases.js';
+import { GitNotInstalledError } from '../src/application/use-cases/index.js';
 
 test('git config adapter reads and writes the expected global keys', async () => {
   const calls: Array<{ file: string; args: string[] }> = [];

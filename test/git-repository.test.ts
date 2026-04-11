@@ -1,9 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { SystemGitRepository } from '../src/adapters/git-repository.js';
-import { GitNotInstalledError } from '../src/application/use-cases.js';
-import { parseRemoteUrl } from '../src/domain/repository.js';
+import { parseRemoteUrl, SystemGitRepository } from '../src/adapters/git-repository.js';
+import { GitNotInstalledError } from '../src/application/use-cases/index.js';
 
 test('git repository adapter reads repository state', async () => {
   const calls: Array<{ file: string; args: string[] }> = [];
@@ -70,6 +69,14 @@ test('git repository adapter reads repository state', async () => {
     await adapter.getOriginUrl(),
     'git@github.com-synsoftworksdev:synsoftworksdev/gitrole.git'
   );
+  assert.deepEqual(await adapter.getOriginRemote(), {
+    name: 'origin',
+    url: 'git@github.com-synsoftworksdev:synsoftworksdev/gitrole.git',
+    protocol: 'ssh',
+    host: 'github.com-synsoftworksdev',
+    owner: 'synsoftworksdev',
+    repository: 'gitrole'
+  });
   assert.equal(await adapter.getLocalUserName(), 'Sara Loera');
   assert.equal(await adapter.getLocalUserEmail(), 'sara@synthesissoftworks.com');
   await adapter.setLocalUserName('Alex Developer');

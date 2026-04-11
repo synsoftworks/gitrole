@@ -1,0 +1,344 @@
+import { matchesIdentity, type Role } from '../../domain/role.js';
+import {
+  getDoctorOverall,
+  DoctorCheck,
+  DoctorDependencies,
+  DoctorResult,
+  RoleAlignmentResult,
+  UseRoleDependencies
+} from '../contracts.js';
+import { collectObservedState, type ObservedState } from '../observed-state.js';
+
+/**
+ * Diagnoses the active commit identity and push path for the current repository.
+ *
+ * This use case answers two practical questions:
+ * 1. Who will this commit say it is from?
+ * 2. Who will GitHub think I am when I push over SSH?
+ */
+export async function doctor(
+  dependencies: DoctorDependencies
+): Promise<DoctorResult> {
+  const [roles, observedState] = await Promise.all([
+    dependencies.roleStore.list(),
+    collectObservedState(dependencies)
+  ]);
+  const role = roles.find((candidate) =>
+    matchesIdentity(candidate, {
+      fullName: observedState.commitIdentity.fullName.value,
+      email: observedState.commitIdentity.email.value
+    })
+  );
+  const checks = buildDoctorChecks({
+    role,
+    roles,
+    observedState
+  });
+
+  return {
+    role,
+    overall: getDoctorOverall({ checks }),
+    commitIdentity: observedState.commitIdentity,
+    configuredIdentity: observedState.configuredIdentity,
+    scope: observedState.scope,
+    repository: observedState.repository,
+    sshAuth: observedState.sshAuth,
+    checks
+  };
+}
+
+export async function maybeAssessRoleAlignment(
+  dependencies: UseRoleDependencies,
+  role: Role
+): Promise<RoleAlignmentResult | undefined> {
+  if (!dependencies.repository || !dependencies.sshAuthProbe) {
+    return undefined;
+  }
+
+  return assessRoleAlignment(
+    {
+      gitConfig: dependencies.gitConfig,
+      repository: dependencies.repository,
+      sshAuthProbe: dependencies.sshAuthProbe
+    },
+    role
+  );
+}
+
+export async function assessRoleAlignment(
+  dependencies: Pick<DoctorDependencies, 'gitConfig' | 'repository' | 'sshAuthProbe'>,
+  role: Role
+): Promise<RoleAlignmentResult> {
+  const observedState = await collectObservedState(dependencies);
+
+  return {
+    role,
+    commitIdentity: observedState.commitIdentity,
+    scope: observedState.scope,
+    repository: observedState.repository,
+    sshAuth: observedState.sshAuth,
+    checks: buildRoleAlignmentChecks({ role, observedState })
+  };
+}
+
+function buildDoctorChecks(input: {
+  role?: Role;
+  roles: Role[];
+  observedState: ObservedState;
+}): DoctorCheck[] {
+  const checks: DoctorCheck[] = [];
+  const { observedState } = input;
+
+  if (input.role) {
+    checks.push({
+      status: 'ok',
+      label: 'role',
+      message: `commit identity matches saved role ${input.role.name}`
+    });
+  } else {
+    checks.push({
+      status: 'warn',
+      label: 'role',
+      message: 'active commit identity does not match any saved role'
+    });
+
+    checks.push({
+      status: 'info',
+      label: 'fix',
+      message:
+        input.roles.length > 0
+          ? 'add a role for the active commit identity or switch to the intended saved role before committing'
+          : 'add a saved role for the active commit identity before committing'
+    });
+  }
+
+  if (
+    !observedState.commitIdentity.fullName.value ||
+    !observedState.commitIdentity.email.value
+  ) {
+    checks.push({
+      status: 'warn',
+      label: 'commit',
+      message: 'user.name or user.email is not fully configured'
+    });
+  }
+
+  if (observedState.scope.effective === 'mixed') {
+    checks.push({
+      status: 'warn',
+      label: 'scope',
+      message: 'effective commit identity mixes local and global Git config sources'
+    });
+  }
+
+  if (!observedState.repository.isInsideWorkTree) {
+    checks.push({
+      status: 'warn',
+      label: 'repo',
+      message: 'not inside a Git repository; remote push identity could not be diagnosed'
+    });
+
+    return checks;
+  }
+
+  if (observedState.repository.hasCommits === false) {
+    checks.push({
+      status: 'warn',
+      label: 'history',
+      message: 'repository has no commits yet; the first push will fail until HEAD exists'
+    });
+  }
+
+  if (!observedState.repository.remote) {
+    checks.push({
+      status: 'warn',
+      label: 'remote',
+      message: 'origin remote is not configured'
+    });
+
+    return checks;
+  }
+
+  checks.push({
+    status: 'info',
+    label: 'remote',
+    message: `origin uses ${observedState.repository.remote.protocol} at ${observedState.repository.remote.url}`
+  });
+
+  if (observedState.sshAuth?.ok && observedState.sshAuth.githubUser) {
+    const commitIdentity = formatCommitIdentity(observedState.commitIdentity);
+    const shouldReportIdentityDivergence =
+      !input.role ||
+      (input.role.githubUser !== undefined &&
+        observedState.sshAuth.githubUser !== input.role.githubUser);
+
+    if (commitIdentity && shouldReportIdentityDivergence) {
+      checks.push({
+        status: 'warn',
+        label: 'identity',
+        message: `commit identity is ${commitIdentity} but SSH auth resolves to ${observedState.sshAuth.githubUser}`
+      });
+    }
+  }
+
+  if (!input.role) {
+    return checks;
+  }
+
+  checks.push(
+    ...buildRoleAlignmentChecks({
+      role: input.role,
+      observedState
+    })
+  );
+
+  return checks;
+}
+
+function buildRoleAlignmentChecks(input: {
+  role: Role;
+  observedState: ObservedState;
+}): DoctorCheck[] {
+  const checks: DoctorCheck[] = [];
+  const { role, observedState } = input;
+
+  if (observedState.scope.effective === 'mixed') {
+    checks.push({
+      status: 'warn',
+      label: 'scope',
+      message: `selected role ${role.name} is split across local and global config sources`
+    });
+  } else if (observedState.scope.effective === 'local' || observedState.scope.effective === 'global') {
+    checks.push({
+      status: 'ok',
+      label: 'scope',
+      message: `selected role ${role.name} is applied via ${observedState.scope.effective} config`
+    });
+  }
+
+  if (
+    observedState.commitIdentity.fullName.value !== role.fullName ||
+    observedState.commitIdentity.email.value !== role.email
+  ) {
+    checks.push({
+      status: 'warn',
+      label: 'commit',
+      message: `effective commit identity does not match selected role ${role.name}`
+    });
+  } else {
+    checks.push({
+      status: 'ok',
+      label: 'commit',
+      message: `effective commit identity matches selected role ${role.name}`
+    });
+  }
+
+  if (!observedState.repository.isInsideWorkTree) {
+    checks.push({
+      status: 'warn',
+      label: 'repo',
+      message: 'not inside a Git repository; remote alignment could not be checked'
+    });
+    return dedupeChecks(checks);
+  }
+
+  if (!observedState.repository.remote) {
+    checks.push({
+      status: 'warn',
+      label: 'remote',
+      message: 'origin remote is not configured'
+    });
+    return dedupeChecks(checks);
+  }
+
+  if (role.githubHost && observedState.repository.remote.host) {
+    checks.push({
+      status: role.githubHost === observedState.repository.remote.host ? 'ok' : 'warn',
+      label: 'host',
+      message:
+        role.githubHost === observedState.repository.remote.host
+          ? `remote host matches role githubHost ${role.githubHost}`
+          : `remote host ${observedState.repository.remote.host} does not match role githubHost ${role.githubHost}`
+    });
+  }
+
+  if (role.githubUser && observedState.repository.remote.owner) {
+    checks.push({
+      status: role.githubUser === observedState.repository.remote.owner ? 'ok' : 'warn',
+      label: 'owner',
+      message:
+        role.githubUser === observedState.repository.remote.owner
+          ? `remote owner matches role githubUser ${role.githubUser}`
+          : `remote owner ${observedState.repository.remote.owner} does not match role githubUser ${role.githubUser}`
+    });
+  }
+
+  if (observedState.repository.remote.protocol === 'https') {
+    checks.push({
+      status: 'warn',
+      label: 'auth',
+      message: 'origin uses HTTPS; gitrole cannot verify GitHub SSH auth identity for pushes'
+    });
+    return dedupeChecks(checks);
+  }
+
+  if (!observedState.sshAuth) {
+    checks.push({
+      status: 'warn',
+      label: 'auth',
+      message: 'SSH auth could not be probed for the current remote host'
+    });
+    return dedupeChecks(checks);
+  }
+
+  if (!observedState.sshAuth.ok) {
+    checks.push({
+      status: 'warn',
+      label: 'auth',
+      message: observedState.sshAuth.message ?? 'SSH auth identity could not be determined'
+    });
+    return dedupeChecks(checks);
+  }
+
+  if (role.githubUser) {
+    checks.push({
+      status: observedState.sshAuth.githubUser === role.githubUser ? 'ok' : 'warn',
+      label: 'auth',
+      message:
+        observedState.sshAuth.githubUser === role.githubUser
+          ? `SSH auth matches role githubUser ${role.githubUser}`
+          : `SSH auth resolved to ${observedState.sshAuth.githubUser}, expected ${role.githubUser}`
+    });
+  } else if (observedState.sshAuth.githubUser) {
+    checks.push({
+      status: 'info',
+      label: 'auth',
+      message: `SSH auth resolved to ${observedState.sshAuth.githubUser}`
+    });
+  }
+
+  return dedupeChecks(checks);
+}
+
+function dedupeChecks(checks: DoctorCheck[]): DoctorCheck[] {
+  const seen = new Set<string>();
+
+  return checks.filter((check) => {
+    const key = `${check.status}:${check.label}:${check.message}`;
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
+function formatCommitIdentity(identity: DoctorResult['commitIdentity']): string | undefined {
+  if (!identity.fullName.value || !identity.email.value) {
+    return undefined;
+  }
+
+  return `${identity.fullName.value} <${identity.email.value}>`;
+}
