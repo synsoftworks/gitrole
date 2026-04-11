@@ -23,7 +23,12 @@
     "identity",
     "profile",
     "switch",
-    "cli"
+    "cli",
+    "ssh",
+    "github",
+    "github-config",
+    "dev-tool",
+    "identity-management"
   ],
   "author": "Sara Loera",
   "license": "MIT",

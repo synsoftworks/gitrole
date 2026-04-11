@@ -302,6 +302,14 @@ test('use-role returns repo-aware warnings when the selected role does not match
   assert.equal(
     result.alignment?.checks.some(
       (check) =>
+        check.label === 'host' &&
+        check.message.includes('does not match role githubHost')
+    ),
+    true
+  );
+  assert.equal(
+    result.alignment?.checks.some(
+      (check) =>
         check.label === 'auth' && check.message.includes('expected synsoftworksdev')
     ),
     true
@@ -609,6 +617,111 @@ test('doctor reports local scope when repo-local identity overrides are active',
   assert.equal(status.localOverride, true);
   assert.equal(status.lastNonMergeCommit?.authorName, 'Alex Developer');
   assert.equal(status.overall, 'aligned');
+});
+
+test('doctor stays aligned for org remotes when auth and host match the role', async () => {
+  const role: Role = {
+    name: 'personal',
+    fullName: 'Alex Developer',
+    email: 'alex@personal.example',
+    githubUser: 'alex-dev',
+    githubHost: 'github.com-personal'
+  };
+  const dependencies: DoctorDependencies = {
+    roleStore: {
+      async list() {
+        return [role];
+      },
+      async get() {
+        return role;
+      },
+      async save() {
+        return undefined;
+      },
+      async remove() {
+        return true;
+      }
+    },
+    gitConfig: {
+      async getGlobalUserName() {
+        return role.fullName;
+      },
+      async getGlobalUserEmail() {
+        return role.email;
+      },
+      async setGlobalUserName() {
+        return undefined;
+      },
+      async setGlobalUserEmail() {
+        return undefined;
+      }
+    },
+    repository: {
+      async isInsideWorkTree() {
+        return true;
+      },
+      async hasCommits() {
+        return true;
+      },
+      async getLatestNonMergeCommit() {
+        return {
+          sha: 'abc123',
+          authorName: 'Alex Developer',
+          authorEmail: 'alex@personal.example',
+          subject: 'feat: aligned personal commit'
+        };
+      },
+      async getTopLevelPath() {
+        return '/tmp/gitrole';
+      },
+      async getCurrentBranch() {
+        return 'main';
+      },
+      async getUpstreamBranch() {
+        return 'origin/main';
+      },
+      async getOriginUrl() {
+        return 'git@github.com-personal:acme-org/gitrole.git';
+      },
+      async getOriginRemote() {
+        return getOriginRemote('git@github.com-personal:acme-org/gitrole.git');
+      },
+      async setOriginUrl() {
+        return undefined;
+      },
+      async getLocalUserName() {
+        return undefined;
+      },
+      async getLocalUserEmail() {
+        return undefined;
+      },
+      async setLocalUserName() {
+        return undefined;
+      },
+      async setLocalUserEmail() {
+        return undefined;
+      }
+    },
+    sshAuthProbe: {
+      async probeGithubUser() {
+        return {
+          ok: true,
+          host: 'github.com-personal',
+          githubUser: 'alex-dev'
+        };
+      }
+    }
+  };
+
+  const result = await doctor(dependencies);
+  const status = await getStatus(dependencies);
+  const verification = await verify(dependencies);
+
+  assert.equal(result.repository.remote?.owner, 'acme-org');
+  assert.equal(result.overall, 'aligned');
+  assert.equal(result.checks.some((check) => check.label === 'owner'), false);
+  assert.equal(status.overall, 'aligned');
+  assert.equal(verification.overall, 'aligned');
 });
 
 test('doctor warns when HTTPS remotes prevent SSH auth verification', async () => {

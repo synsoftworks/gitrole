@@ -262,17 +262,6 @@ function buildRoleAlignmentChecks(input: {
     });
   }
 
-  if (role.githubUser && observedState.repository.remote.owner) {
-    checks.push({
-      status: role.githubUser === observedState.repository.remote.owner ? 'ok' : 'warn',
-      label: 'owner',
-      message:
-        role.githubUser === observedState.repository.remote.owner
-          ? `remote owner matches role githubUser ${role.githubUser}`
-          : `remote owner ${observedState.repository.remote.owner} does not match role githubUser ${role.githubUser}`
-    });
-  }
-
   if (observedState.repository.remote.protocol === 'https') {
     checks.push({
       status: 'warn',
