@@ -28,6 +28,13 @@ test('git repository adapter reads repository state', async () => {
         return { stdout: 'main\n', stderr: '' };
       }
 
+      if (args[0] === 'log') {
+        return {
+          stdout: 'abc123\u001fSara Loera\u001fsaraeloop@gmail.com\u001fdocs(cli): improve terminal help text\n',
+          stderr: ''
+        };
+      }
+
       if (args[0] === 'rev-parse' && args.includes('@{upstream}')) {
         return { stdout: 'origin/main\n', stderr: '' };
       }
@@ -53,6 +60,12 @@ test('git repository adapter reads repository state', async () => {
   assert.equal(await adapter.getTopLevelPath(), '/tmp/gitrole');
   assert.equal(await adapter.getCurrentBranch(), 'main');
   assert.equal(await adapter.getUpstreamBranch(), 'origin/main');
+  assert.deepEqual(await adapter.getLatestNonMergeCommit(), {
+    sha: 'abc123',
+    authorName: 'Sara Loera',
+    authorEmail: 'saraeloop@gmail.com',
+    subject: 'docs(cli): improve terminal help text'
+  });
   assert.equal(
     await adapter.getOriginUrl(),
     'git@github.com-synsoftworksdev:synsoftworksdev/gitrole.git'

@@ -9,6 +9,7 @@ import {
   NotInGitRepositoryError,
   useRemoteForRole,
   useRole,
+  verify,
   type AppDependencies,
   type DoctorDependencies
 } from '../src/application/use-cases.js';
@@ -105,6 +106,14 @@ test('use-role can apply the selected git identity to local repository config', 
         async hasCommits() {
           return true;
         },
+        async getLatestNonMergeCommit() {
+          return {
+            sha: 'abc123',
+            authorName: 'Alex Developer',
+            authorEmail: 'alex@work.example',
+            subject: 'feat: test local scope'
+          };
+        },
         async getTopLevelPath() {
           return '/tmp/gitrole';
         },
@@ -171,11 +180,14 @@ test('use-role rejects local scope outside a git repository', async () => {
             async isInsideWorkTree() {
               return false;
             },
-            async hasCommits() {
-              return false;
-            },
-            async getTopLevelPath() {
-              return undefined;
+        async hasCommits() {
+          return false;
+        },
+        async getLatestNonMergeCommit() {
+          return undefined;
+        },
+        async getTopLevelPath() {
+          return undefined;
             },
             async getCurrentBranch() {
               return undefined;
@@ -229,6 +241,9 @@ test('use-role returns repo-aware warnings when the selected role does not match
         },
         async hasCommits() {
           return true;
+        },
+        async getLatestNonMergeCommit() {
+          return undefined;
         },
         async getTopLevelPath() {
           return '/tmp/gitrole';
@@ -385,6 +400,14 @@ test('doctor aligns commit identity, remote metadata, and SSH auth', async () =>
       async hasCommits() {
         return true;
       },
+      async getLatestNonMergeCommit() {
+        return {
+          sha: 'abc123',
+          authorName: 'Sara Loera',
+          authorEmail: 'sara@synthesissoftworks.com',
+          subject: 'feat: align identity'
+        };
+      },
       async getTopLevelPath() {
         return '/tmp/gitrole';
       },
@@ -441,10 +464,23 @@ test('doctor aligns commit identity, remote metadata, and SSH auth', async () =>
   assert.equal(status.commitIdentity, 'Sara Loera <sara@synthesissoftworks.com>');
   assert.equal(status.scope, 'global');
   assert.equal(status.localOverride, false);
+  assert.deepEqual(status.lastNonMergeCommit, {
+    sha: 'abc123',
+    authorName: 'Sara Loera',
+    authorEmail: 'sara@synthesissoftworks.com',
+    subject: 'feat: align identity'
+  });
   assert.equal(status.overall, 'aligned');
   assert.equal(status.commit, 'ok');
   assert.equal(status.remote, 'ok');
   assert.equal(status.auth, 'ok');
+
+  const verification = await verify(dependencies);
+  assert.equal(verification.roleName, 'work');
+  assert.equal(verification.identity, 'Sara Loera <sara@synthesissoftworks.com>');
+  assert.equal(verification.nextCommit, 'Sara Loera <sara@synthesissoftworks.com>');
+  assert.equal(verification.scope, 'global');
+  assert.equal(verification.overall, 'aligned');
 });
 
 test('doctor reports local scope when repo-local identity overrides are active', async () => {
@@ -490,6 +526,14 @@ test('doctor reports local scope when repo-local identity overrides are active',
       },
       async hasCommits() {
         return true;
+      },
+      async getLatestNonMergeCommit() {
+        return {
+          sha: 'abc123',
+          authorName: 'Alex Developer',
+          authorEmail: 'alex@work.example',
+          subject: 'feat: local alignment'
+        };
       },
       async getTopLevelPath() {
         return '/tmp/gitrole';
@@ -546,6 +590,7 @@ test('doctor reports local scope when repo-local identity overrides are active',
   );
   assert.equal(status.scope, 'local');
   assert.equal(status.localOverride, true);
+  assert.equal(status.lastNonMergeCommit?.authorName, 'Alex Developer');
   assert.equal(status.overall, 'aligned');
 });
 
@@ -591,6 +636,9 @@ test('doctor warns when HTTPS remotes prevent SSH auth verification', async () =
       },
       async hasCommits() {
         return false;
+      },
+      async getLatestNonMergeCommit() {
+        return undefined;
       },
       async getTopLevelPath() {
         return '/tmp/gitrole';
@@ -682,6 +730,9 @@ test('useRemoteForRole rewrites origin to the role host alias', async () => {
         async hasCommits() {
           return true;
         },
+        async getLatestNonMergeCommit() {
+          return undefined;
+        },
         async getTopLevelPath() {
           return '/tmp/gitrole';
         },
@@ -761,6 +812,14 @@ test('doctor adds a fix hint when no saved role matches the active commit identi
       async hasCommits() {
         return true;
       },
+      async getLatestNonMergeCommit() {
+        return {
+          sha: 'abc123',
+          authorName: 'Pat Person',
+          authorEmail: 'pat@personal.example',
+          subject: 'feat: previous personal commit'
+        };
+      },
       async getTopLevelPath() {
         return '/tmp/gitrole';
       },
@@ -825,8 +884,197 @@ test('doctor adds a fix hint when no saved role matches the active commit identi
   assert.equal(status.roleName, 'no-role');
   assert.equal(status.scope, 'global');
   assert.equal(status.localOverride, false);
+  assert.equal(status.lastNonMergeCommit?.authorName, 'Pat Person');
   assert.equal(status.overall, 'warning');
   assert.equal(status.commit, 'warn');
   assert.equal(status.remote, 'ok');
   assert.equal(status.auth, 'ok');
+});
+
+test('verify stays aligned when no non-merge commit exists but effective identity is configured', async () => {
+  const role: Role = {
+    name: 'work',
+    fullName: 'Alex Developer',
+    email: 'alex@work.example'
+  };
+  const dependencies: DoctorDependencies = {
+    roleStore: {
+      async list() {
+        return [role];
+      },
+      async get() {
+        return role;
+      },
+      async save() {
+        return undefined;
+      },
+      async remove() {
+        return true;
+      }
+    },
+    gitConfig: {
+      async getGlobalUserName() {
+        return role.fullName;
+      },
+      async getGlobalUserEmail() {
+        return role.email;
+      },
+      async setGlobalUserName() {
+        return undefined;
+      },
+      async setGlobalUserEmail() {
+        return undefined;
+      }
+    },
+    repository: {
+      async isInsideWorkTree() {
+        return true;
+      },
+      async hasCommits() {
+        return false;
+      },
+      async getLatestNonMergeCommit() {
+        return undefined;
+      },
+      async getTopLevelPath() {
+        return '/tmp/gitrole';
+      },
+      async getCurrentBranch() {
+        return 'main';
+      },
+      async getUpstreamBranch() {
+        return 'origin/main';
+      },
+      async getOriginUrl() {
+        return 'git@github.com-acme-dev:acme-dev/gitrole.git';
+      },
+      async setOriginUrl() {
+        return undefined;
+      },
+      async getLocalUserName() {
+        return undefined;
+      },
+      async getLocalUserEmail() {
+        return undefined;
+      },
+      async setLocalUserName() {
+        return undefined;
+      },
+      async setLocalUserEmail() {
+        return undefined;
+      }
+    },
+    sshAuthProbe: {
+      async probeGithubUser() {
+        return {
+          ok: true,
+          host: 'github.com-acme-dev',
+          githubUser: 'acme-dev'
+        };
+      }
+    }
+  };
+
+  const result = await verify(dependencies);
+
+  assert.equal(result.identity, 'Alex Developer <alex@work.example>');
+  assert.equal(result.lastNonMergeCommit, undefined);
+  assert.equal(result.overall, 'aligned');
+});
+
+test('verify warns when the latest non-merge commit author differs from the effective identity', async () => {
+  const role: Role = {
+    name: 'saraeloop',
+    fullName: 'Sara Loera',
+    email: 'saraeloop@gmail.com'
+  };
+  const dependencies: DoctorDependencies = {
+    roleStore: {
+      async list() {
+        return [role];
+      },
+      async get() {
+        return role;
+      },
+      async save() {
+        return undefined;
+      },
+      async remove() {
+        return true;
+      }
+    },
+    gitConfig: {
+      async getGlobalUserName() {
+        return role.fullName;
+      },
+      async getGlobalUserEmail() {
+        return role.email;
+      },
+      async setGlobalUserName() {
+        return undefined;
+      },
+      async setGlobalUserEmail() {
+        return undefined;
+      }
+    },
+    repository: {
+      async isInsideWorkTree() {
+        return true;
+      },
+      async hasCommits() {
+        return true;
+      },
+      async getLatestNonMergeCommit() {
+        return {
+          sha: 'abc123',
+          authorName: 'Synthesis Softworks',
+          authorEmail: 'dev@synthesissoftworks.com',
+          subject: 'feat: previous commit'
+        };
+      },
+      async getTopLevelPath() {
+        return '/tmp/gitrole';
+      },
+      async getCurrentBranch() {
+        return 'main';
+      },
+      async getUpstreamBranch() {
+        return 'origin/main';
+      },
+      async getOriginUrl() {
+        return 'git@github.com-saraeloop:saraeloop/gitrole.git';
+      },
+      async setOriginUrl() {
+        return undefined;
+      },
+      async getLocalUserName() {
+        return undefined;
+      },
+      async getLocalUserEmail() {
+        return undefined;
+      },
+      async setLocalUserName() {
+        return undefined;
+      },
+      async setLocalUserEmail() {
+        return undefined;
+      }
+    },
+    sshAuthProbe: {
+      async probeGithubUser() {
+        return {
+          ok: true,
+          host: 'github.com-saraeloop',
+          githubUser: 'saraeloop'
+        };
+      }
+    }
+  };
+
+  const result = await verify(dependencies);
+  const status = await getStatus(dependencies);
+
+  assert.equal(result.overall, 'warning');
+  assert.equal(result.lastNonMergeCommit?.authorName, 'Synthesis Softworks');
+  assert.equal(status.overall, 'warning');
 });

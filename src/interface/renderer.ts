@@ -10,6 +10,7 @@ import type {
   StatusResult,
   UseRoleResult
 } from '../application/use-cases.js';
+import type { NonMergeCommit, VerifyResult } from '../application/use-cases.js';
 import type { Role } from '../domain/role.js';
 
 export function renderSavedRole(role: Role): string {
@@ -132,12 +133,16 @@ export function renderStatus(result: StatusResult): string {
     result.overall === 'aligned' ? chalk.green(result.overall) : chalk.yellow(result.overall);
   const scopeLabel = formatStatusScope(result);
 
-  return [
+  const lines = [[
     chalk.bold(result.roleName),
     result.commitIdentity ?? chalk.dim('commit identity unset'),
     chalk.dim(scopeLabel),
     summary
-  ].join('  ');
+  ].join('  ')];
+
+  lines.push(`last non-merge commit  ${formatLastNonMergeCommit(result.lastNonMergeCommit)}`);
+
+  return lines.join('\n');
 }
 
 export function renderShortStatus(result: StatusResult): string {
@@ -237,6 +242,20 @@ export function renderDoctor(result: DoctorResult, title = 'doctor'): string {
   return lines.join('\n');
 }
 
+export function renderVerify(result: VerifyResult): string {
+  const lines = [
+    chalk.bold('verify'),
+    formatDetail('identity', result.identity ?? chalk.dim('not set')),
+    formatDetail('scope', result.scope),
+    formatDetail('role', result.roleName ?? chalk.yellow('no matching role')),
+    formatDetail('next commit', result.nextCommit ?? chalk.dim('not set')),
+    formatDetail('last non-merge commit', formatLastNonMergeCommit(result.lastNonMergeCommit)),
+    formatDetail('status', formatVerifyStatus(result))
+  ];
+
+  return lines.join('\n');
+}
+
 function formatDetail(label: string, value: string): string {
   return `  ${chalk.cyan(label.padEnd(5, ' '))} ${value}`;
 }
@@ -297,4 +316,24 @@ function formatIdentityPair(identity: { fullName?: string; email?: string }): st
   const email = identity.email ?? chalk.dim('not set');
 
   return `${fullName} <${email}>`;
+}
+
+function formatLastNonMergeCommit(commit?: NonMergeCommit): string {
+  if (!commit) {
+    return 'none';
+  }
+
+  return `${commit.authorName} <${commit.authorEmail}> — ${commit.subject}`;
+}
+
+function formatVerifyStatus(result: VerifyResult): string {
+  if (result.overall === 'warning') {
+    return chalk.yellow('warning');
+  }
+
+  if (!result.lastNonMergeCommit) {
+    return chalk.green('ready');
+  }
+
+  return chalk.green('aligned');
 }
