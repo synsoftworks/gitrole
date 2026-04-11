@@ -1,9 +1,68 @@
 import { execFile as nodeExecFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-import { GitNotInstalledError, type NonMergeCommit } from '../application/use-cases.js';
+import { GitNotInstalledError } from '../application/use-cases/index.js';
+import type { NonMergeCommit } from '../application/contracts.js';
 
 const execFile = promisify(nodeExecFile);
+
+export type RemoteProtocol = 'ssh' | 'https' | 'unknown';
+
+export interface RemoteInfo {
+  name: string;
+  url: string;
+  protocol: RemoteProtocol;
+  host?: string;
+  owner?: string;
+  repository?: string;
+}
+
+export function parseRemoteUrl(name: string, url: string): RemoteInfo {
+  const httpsMatch = /^https:\/\/([^/]+)\/([^/]+)\/(.+?)(?:\.git)?$/i.exec(url);
+
+  if (httpsMatch) {
+    return {
+      name,
+      url,
+      protocol: 'https',
+      host: httpsMatch[1],
+      owner: httpsMatch[2],
+      repository: httpsMatch[3]
+    };
+  }
+
+  const sshScpMatch = /^(?:[^@]+@)?([^:]+):([^/]+)\/(.+?)(?:\.git)?$/i.exec(url);
+
+  if (sshScpMatch) {
+    return {
+      name,
+      url,
+      protocol: 'ssh',
+      host: sshScpMatch[1],
+      owner: sshScpMatch[2],
+      repository: sshScpMatch[3]
+    };
+  }
+
+  const sshUrlMatch = /^ssh:\/\/(?:[^@]+@)?([^/]+)\/([^/]+)\/(.+?)(?:\.git)?$/i.exec(url);
+
+  if (sshUrlMatch) {
+    return {
+      name,
+      url,
+      protocol: 'ssh',
+      host: sshUrlMatch[1],
+      owner: sshUrlMatch[2],
+      repository: sshUrlMatch[3]
+    };
+  }
+
+  return {
+    name,
+    url,
+    protocol: 'unknown'
+  };
+}
 
 export interface ExecResult {
   stdout: string;
@@ -102,6 +161,12 @@ export class SystemGitRepository {
 
   async getOriginUrl(): Promise<string | undefined> {
     return this.getOptionalValue(['remote', 'get-url', 'origin']);
+  }
+
+  async getOriginRemote(): Promise<RemoteInfo | undefined> {
+    const originUrl = await this.getOriginUrl();
+
+    return originUrl ? parseRemoteUrl('origin', originUrl) : undefined;
   }
 
   async setOriginUrl(url: string): Promise<void> {

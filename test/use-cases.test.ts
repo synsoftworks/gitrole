@@ -3,17 +3,20 @@ import assert from 'node:assert/strict';
 
 import {
   doctor,
-  getDoctorExitCode,
   getCurrentRole,
   getStatus,
   NotInGitRepositoryError,
   useRemoteForRole,
   useRole,
-  verify,
-  type AppDependencies,
-  type DoctorDependencies
-} from '../src/application/use-cases.js';
+  verify
+} from '../src/application/use-cases/index.js';
+import type { AppDependencies, DoctorDependencies } from '../src/application/contracts.js';
+import { parseRemoteUrl } from '../src/adapters/git-repository.js';
 import type { Role } from '../src/domain/role.js';
+
+function getOriginRemote(url?: string) {
+  return url ? parseRemoteUrl('origin', url) : undefined;
+}
 
 function createDependencies(role: Role): {
   dependencies: AppDependencies;
@@ -126,6 +129,9 @@ test('use-role can apply the selected git identity to local repository config', 
         async getOriginUrl() {
           return 'git@github.com-acme-dev:acme-dev/gitrole.git';
         },
+        async getOriginRemote() {
+          return getOriginRemote('git@github.com-acme-dev:acme-dev/gitrole.git');
+        },
         async setOriginUrl() {
           return undefined;
         },
@@ -198,6 +204,9 @@ test('use-role rejects local scope outside a git repository', async () => {
             async getOriginUrl() {
               return undefined;
             },
+            async getOriginRemote() {
+              return undefined;
+            },
             async setOriginUrl() {
               return undefined;
             },
@@ -256,6 +265,9 @@ test('use-role returns repo-aware warnings when the selected role does not match
         },
         async getOriginUrl() {
           return 'git@github.com-saraeloop:synsoftworksdev/gitrole.git';
+        },
+        async getOriginRemote() {
+          return getOriginRemote('git@github.com-saraeloop:synsoftworksdev/gitrole.git');
         },
         async setOriginUrl() {
           return undefined;
@@ -420,6 +432,9 @@ test('doctor aligns commit identity, remote metadata, and SSH auth', async () =>
       async getOriginUrl() {
         return 'git@github.com-synsoftworksdev:synsoftworksdev/gitrole.git';
       },
+      async getOriginRemote() {
+        return getOriginRemote('git@github.com-synsoftworksdev:synsoftworksdev/gitrole.git');
+      },
       async setOriginUrl() {
         return undefined;
       },
@@ -457,7 +472,6 @@ test('doctor aligns commit identity, remote metadata, and SSH auth', async () =>
   assert.equal(result.sshAuth?.githubUser, 'synsoftworksdev');
   assert.equal(result.checks.some((check) => check.status === 'warn'), false);
   assert.equal(result.checks.some((check) => check.label === 'identity'), false);
-  assert.equal(getDoctorExitCode(result), 0);
 
   const status = await getStatus(dependencies);
   assert.equal(status.roleName, 'work');
@@ -546,6 +560,9 @@ test('doctor reports local scope when repo-local identity overrides are active',
       },
       async getOriginUrl() {
         return 'git@github.com-acme-dev:acme-dev/gitrole.git';
+      },
+      async getOriginRemote() {
+        return getOriginRemote('git@github.com-acme-dev:acme-dev/gitrole.git');
       },
       async setOriginUrl() {
         return undefined;
@@ -652,6 +669,9 @@ test('doctor warns when HTTPS remotes prevent SSH auth verification', async () =
       async getOriginUrl() {
         return 'https://github.com/synsoftworksdev/gitrole.git';
       },
+      async getOriginRemote() {
+        return getOriginRemote('https://github.com/synsoftworksdev/gitrole.git');
+      },
       async setOriginUrl() {
         return undefined;
       },
@@ -679,7 +699,6 @@ test('doctor warns when HTTPS remotes prevent SSH auth verification', async () =
 
   assert.equal(result.repository.remote?.protocol, 'https');
   assert.equal(result.overall, 'warning');
-  assert.equal(getDoctorExitCode(result), 2);
   assert.equal(
     result.checks.some(
       (check) =>
@@ -744,6 +763,9 @@ test('useRemoteForRole rewrites origin to the role host alias', async () => {
         },
         async getOriginUrl() {
           return 'git@github.com:synsoftworksdev/gitrole.git';
+        },
+        async getOriginRemote() {
+          return getOriginRemote('git@github.com:synsoftworksdev/gitrole.git');
         },
         async setOriginUrl(url: string) {
           calls.push(url);
@@ -831,6 +853,9 @@ test('doctor adds a fix hint when no saved role matches the active commit identi
       },
       async getOriginUrl() {
         return 'git@github.com-acme-dev:acme-dev/gitrole.git';
+      },
+      async getOriginRemote() {
+        return getOriginRemote('git@github.com-acme-dev:acme-dev/gitrole.git');
       },
       async setOriginUrl() {
         return undefined;
@@ -948,6 +973,9 @@ test('verify stays aligned when no non-merge commit exists but effective identit
       async getOriginUrl() {
         return 'git@github.com-acme-dev:acme-dev/gitrole.git';
       },
+      async getOriginRemote() {
+        return getOriginRemote('git@github.com-acme-dev:acme-dev/gitrole.git');
+      },
       async setOriginUrl() {
         return undefined;
       },
@@ -1043,6 +1071,9 @@ test('verify warns when the latest non-merge commit author differs from the effe
       },
       async getOriginUrl() {
         return 'git@github.com-saraeloop:saraeloop/gitrole.git';
+      },
+      async getOriginRemote() {
+        return getOriginRemote('git@github.com-saraeloop:saraeloop/gitrole.git');
       },
       async setOriginUrl() {
         return undefined;

@@ -1,7 +1,7 @@
 import { execFile as nodeExecFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-import { GitNotInstalledError } from '../application/use-cases.js';
+import { GitNotInstalledError } from '../application/use-cases/index.js';
 
 const execFile = promisify(nodeExecFile);
 

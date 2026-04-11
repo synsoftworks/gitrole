@@ -5,12 +5,11 @@ import { fileURLToPath } from 'node:url';
 
 import { Command } from 'commander';
 
+import { getDoctorExitCode } from './exit-codes.js';
 import {
   addRole,
   doctor,
-  getDoctorExitCode,
   getStatus,
-  type DoctorDependencies,
   getCurrentRole,
   GitNotInstalledError,
   listRoles,
@@ -20,11 +19,11 @@ import {
   removeRole,
   RoleMissingGithubHostError,
   UnsupportedRemoteRewriteError,
-  type AppDependencies,
   useRemoteForRole,
   useRole,
   verify
-} from '../application/use-cases.js';
+} from '../application/use-cases/index.js';
+import type { AppDependencies, DoctorDependencies } from '../application/contracts.js';
 import { SystemGitConfig } from '../adapters/git-config.js';
 import { SystemGitRepository } from '../adapters/git-repository.js';
 import { FileRoleStore } from '../adapters/role-store.js';

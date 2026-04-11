@@ -64,6 +64,46 @@ Host github.com-acme-dev
 
 Then `gitrole remote use work` rewrites `origin` to use that alias, ensuring pushes authenticate as the right GitHub account.
 
+## SSH Config vs gitrole Roles
+
+These are related, but they are not the same thing:
+
+- `~/.ssh/config` defines how SSH connects to a host alias
+- `gitrole` defines a named git identity role
+
+Use both together:
+
+1. Create an SSH host alias in `~/.ssh/config`
+
+```sshconfig
+Host github.com-personal
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/id_ed25519_personal
+  IdentitiesOnly yes
+```
+
+2. Create a matching `gitrole` role
+
+```bash
+gitrole add personal \
+  --name "Alex Developer" \
+  --email "alex@personal.example" \
+  --ssh ~/.ssh/id_ed25519_personal \
+  --github-user alex-dev \
+  --github-host github.com-personal
+```
+
+What each flag means:
+
+- `--ssh` tells `gitrole` which key to load with `ssh-add`
+- `--github-host` tells `gitrole` which SSH host alias the role expects
+
+`gitrole` does not replace `~/.ssh/config`, and you do not copy SSH config blocks into `gitrole`. The usual setup is:
+
+1. define a host alias in `~/.ssh/config`
+2. create a matching `gitrole` role that points at that key and alias
+
 ## Scoped Use
 
 `gitrole use <role>` keeps the original global behavior.
