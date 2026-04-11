@@ -18,7 +18,9 @@
     "docs:build": "eleventy",
     "docs:dev": "eleventy --serve",
     "prepack": "npm run build",
-    "test": "npm run build:test && node --test dist-test/test/*.test.js"
+    "test": "npm run build:test && node --test dist-test/test/*.test.js",
+    "test:e2e": "npm run build && npm run build:test && node --test dist-test/test/e2e/*.test.js",
+    "test:release": "npm test && npm run test:e2e"
   },
   "keywords": [
     "git",
