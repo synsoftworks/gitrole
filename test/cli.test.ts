@@ -46,6 +46,7 @@ test('readme command surface matches the implemented CLI surface', async () => {
   assert.match(readme, /`gitrole status --short`/);
   assert.match(readme, /`gitrole doctor --json`/);
   assert.match(readme, /`gitrole remote set <name>`/);
+  assert.match(readme, /warns on violated expectations, not assumptions/i);
   assert.doesNotMatch(readme, /`gitrole current --verbose`/);
   assert.doesNotMatch(readme, /`gitrole verify`/);
   assert.doesNotMatch(readme, /`gitrole remote use <name>`/);
@@ -60,6 +61,23 @@ test('cli remote help exposes set and removes use', () => {
   assert.match(result.stdout, /set <name>/);
   assert.doesNotMatch(result.stdout, /\buse <name>\b/);
   assert.equal(result.stderr, '');
+});
+
+test('cli doctor and status help describe the warning policy', () => {
+  const doctorHelp = spawnSync(process.execPath, [cliPath, 'doctor', '--help'], {
+    encoding: 'utf8'
+  });
+  const statusHelp = spawnSync(process.execPath, [cliPath, 'status', '--help'], {
+    encoding: 'utf8'
+  });
+
+  assert.equal(doctorHelp.status, 0);
+  assert.match(doctorHelp.stdout, /warns on violated expectations, not assumptions/i);
+  assert.match(doctorHelp.stdout, /Remote owner\/repository is context, not a warning by default/i);
+
+  assert.equal(statusHelp.status, 0);
+  assert.match(statusHelp.stdout, /status warns only on actionable mismatches/i);
+  assert.match(statusHelp.stdout, /Observed context alone does not degrade the overall result/i);
 });
 
 test('cli routes add and list commands through the configured storage', async () => {

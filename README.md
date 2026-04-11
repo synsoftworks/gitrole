@@ -142,6 +142,15 @@ work  Alex Developer <alex@work.example>  local override  aligned
 role=work scope=local override=true commit=ok remote=ok auth=ok overall=aligned
 ```
 
+## Diagnosis Policy
+
+`gitrole` warns on violated expectations, not assumptions.
+
+- `githubUser` checks the resolved SSH auth user
+- `githubHost` checks the remote host alias
+- remote owner and repository are context by default
+- `overall=warning` only happens when at least one actionable check is `warn`
+
 `gitrole doctor` also shows:
 
 - the effective scope: `global`, `local`, `mixed`, or `unset`
