@@ -142,6 +142,13 @@ work  Alex Developer <alex@work.example>  local override  aligned
 role=work scope=local override=true commit=ok remote=ok auth=ok overall=aligned
 ```
 
+## Automation and Agents
+
+`gitrole` is also useful in automation. Use `gitrole status --short` for a quick
+machine-friendly preflight check, and use `gitrole doctor --json` when an agent
+needs structured detail about repo, remote, and SSH identity state before
+committing or pushing.
+
 ## Diagnosis Policy
 
 `gitrole` warns on violated expectations, not assumptions.
