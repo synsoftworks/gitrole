@@ -51,6 +51,7 @@ export interface CurrentRoleDependencies extends AppDependencies {
 export interface GitRepository {
   isInsideWorkTree(): Promise<boolean>;
   hasCommits(): Promise<boolean>;
+  getLatestNonMergeCommit(): Promise<NonMergeCommit | undefined>;
   getTopLevelPath(): Promise<string | undefined>;
   getCurrentBranch(): Promise<string | undefined>;
   getUpstreamBranch(): Promise<string | undefined>;
@@ -135,6 +136,13 @@ export interface DoctorCheck {
 
 export type OverallStatus = 'aligned' | 'warning' | 'error';
 
+export interface NonMergeCommit {
+  sha: string;
+  authorName: string;
+  authorEmail: string;
+  subject: string;
+}
+
 export interface DoctorResult {
   role?: Role;
   overall: OverallStatus;
@@ -179,10 +187,20 @@ export interface StatusResult {
   commitIdentity?: string;
   scope: EffectiveConfigScope;
   localOverride: boolean;
+  lastNonMergeCommit?: NonMergeCommit;
   overall: 'aligned' | 'warning';
   commit: 'ok' | 'warn' | 'na';
   remote: 'ok' | 'warn' | 'na';
   auth: 'ok' | 'warn' | 'na';
+}
+
+export interface VerifyResult {
+  roleName?: string;
+  identity?: string;
+  scope: EffectiveConfigScope;
+  nextCommit?: string;
+  lastNonMergeCommit?: NonMergeCommit;
+  overall: 'aligned' | 'warning';
 }
 
 /**
@@ -450,18 +468,41 @@ export async function useRemoteForRole(
 export async function getStatus(
   dependencies: DoctorDependencies
 ): Promise<StatusResult> {
-  const result = await doctor(dependencies);
-  const commitIdentity = formatCommitIdentity(result.commitIdentity);
+  const verification = await collectVerificationContext(dependencies);
+  const { doctorResult, lastNonMergeCommit } = verification;
+  const commitIdentity = formatCommitIdentity(doctorResult.commitIdentity);
 
   return {
-    roleName: result.role?.name ?? 'no-role',
+    roleName: doctorResult.role?.name ?? 'no-role',
     commitIdentity,
-    scope: result.scope.effective,
-    localOverride: result.scope.hasLocalOverride,
-    overall: getDoctorOverall(result),
-    commit: getCheckGroupStatus(result.checks, ['role', 'commit', 'identity', 'fix', 'scope']),
-    remote: getRemoteStatus(result),
-    auth: getAuthStatus(result)
+    scope: doctorResult.scope.effective,
+    localOverride: doctorResult.scope.hasLocalOverride,
+    lastNonMergeCommit,
+    overall: getStatusOverall(doctorResult, lastNonMergeCommit),
+    commit: getCheckGroupStatus(doctorResult.checks, ['role', 'commit', 'identity', 'fix', 'scope']),
+    remote: getRemoteStatus(doctorResult),
+    auth: getAuthStatus(doctorResult)
+  };
+}
+
+/**
+ * Returns a verification-oriented view of the current effective identity and
+ * latest reachable non-merge commit.
+ */
+export async function verify(
+  dependencies: DoctorDependencies
+): Promise<VerifyResult> {
+  const verification = await collectVerificationContext(dependencies);
+  const { doctorResult, lastNonMergeCommit } = verification;
+  const identity = formatCommitIdentity(doctorResult.commitIdentity);
+
+  return {
+    roleName: doctorResult.role?.name,
+    identity,
+    scope: doctorResult.scope.effective,
+    nextCommit: identity,
+    lastNonMergeCommit,
+    overall: getVerifyOverall(doctorResult, lastNonMergeCommit)
   };
 }
 
@@ -473,6 +514,21 @@ export function getDoctorOverall(
   result: Pick<DoctorResult, 'checks'>
 ): Exclude<OverallStatus, 'error'> {
   return result.checks.some((check) => check.status === 'warn') ? 'warning' : 'aligned';
+}
+
+async function collectVerificationContext(
+  dependencies: DoctorDependencies
+): Promise<{
+  doctorResult: DoctorResult;
+  lastNonMergeCommit?: NonMergeCommit;
+}> {
+  const doctorResult = await doctor(dependencies);
+  const lastNonMergeCommit = await dependencies.repository.getLatestNonMergeCommit();
+
+  return {
+    doctorResult,
+    lastNonMergeCommit
+  };
 }
 
 function diagnoseValue(localValue?: string, globalValue?: string): DiagnosedValue {
@@ -902,6 +958,58 @@ function getAuthStatus(result: DoctorResult): 'ok' | 'warn' | 'na' {
   return result.checks.some((check) => check.label === 'auth' && check.status === 'warn')
     ? 'warn'
     : 'ok';
+}
+
+function getStatusOverall(
+  doctorResult: DoctorResult,
+  lastNonMergeCommit?: NonMergeCommit
+): 'aligned' | 'warning' {
+  if (doctorResult.overall === 'warning') {
+    return 'warning';
+  }
+
+  if (isLastNonMergeCommitMismatch(doctorResult, lastNonMergeCommit)) {
+    return 'warning';
+  }
+
+  return 'aligned';
+}
+
+function getVerifyOverall(
+  doctorResult: DoctorResult,
+  lastNonMergeCommit?: NonMergeCommit
+): 'aligned' | 'warning' {
+  if (hasBlockingVerificationWarnings(doctorResult)) {
+    return 'warning';
+  }
+
+  if (isLastNonMergeCommitMismatch(doctorResult, lastNonMergeCommit)) {
+    return 'warning';
+  }
+
+  return 'aligned';
+}
+
+function isLastNonMergeCommitMismatch(
+  doctorResult: DoctorResult,
+  lastNonMergeCommit?: NonMergeCommit
+): boolean {
+  const effectiveIdentity = formatCommitIdentity(doctorResult.commitIdentity);
+
+  if (!effectiveIdentity || !lastNonMergeCommit) {
+    return false;
+  }
+
+  return (
+    doctorResult.commitIdentity.fullName.value !== lastNonMergeCommit.authorName ||
+    doctorResult.commitIdentity.email.value !== lastNonMergeCommit.authorEmail
+  );
+}
+
+function hasBlockingVerificationWarnings(result: DoctorResult): boolean {
+  return result.checks.some(
+    (check) => check.status === 'warn' && check.label !== 'history'
+  );
 }
 
 function detectIdentityScope(identity: DoctorResult['commitIdentity']): IdentityScopeResult {

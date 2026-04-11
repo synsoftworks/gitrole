@@ -1,7 +1,7 @@
 import { execFile as nodeExecFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-import { GitNotInstalledError } from '../application/use-cases.js';
+import { GitNotInstalledError, type NonMergeCommit } from '../application/use-cases.js';
 
 const execFile = promisify(nodeExecFile);
 
@@ -50,6 +50,41 @@ export class SystemGitRepository {
       }
 
       return false;
+    }
+  }
+
+  async getLatestNonMergeCommit(): Promise<NonMergeCommit | undefined> {
+    try {
+      const result = await this.run([
+        'log',
+        '--no-merges',
+        '-1',
+        '--format=%H%x1f%an%x1f%ae%x1f%s'
+      ]);
+      const value = result.stdout.trim();
+
+      if (!value) {
+        return undefined;
+      }
+
+      const [sha, authorName, authorEmail, subject] = value.split('\u001f');
+
+      if (!sha || !authorName || !authorEmail || subject === undefined) {
+        return undefined;
+      }
+
+      return {
+        sha,
+        authorName,
+        authorEmail,
+        subject
+      };
+    } catch (error) {
+      if (error instanceof GitNotInstalledError) {
+        throw error;
+      }
+
+      return undefined;
     }
   }
 

@@ -168,6 +168,10 @@ if (args[0] === 'branch' && args[1] === '--show-current') {
   process.stdout.write('main\\n');
   process.exit(0);
 }
+if (args[0] === 'log' && args[1] === '--no-merges') {
+  process.stdout.write('old123\\u001fPat Person\\u001fpat@personal.example\\u001fchore: previous personal commit\\n');
+  process.exit(0);
+}
 if (args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'origin') {
   process.stdout.write('git@github.com-acme-dev:acme-dev/gitrole.git\\n');
   process.exit(0);
@@ -361,6 +365,10 @@ if (args[0] === 'branch' && args[1] === '--show-current') {
   process.stdout.write('main\\n');
   process.exit(0);
 }
+if (args[0] === 'log' && args[1] === '--no-merges') {
+  process.stdout.write('old123\\u001fPat Person\\u001fpat@personal.example\\u001fchore: previous personal commit\\n');
+  process.exit(0);
+}
 if (args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'origin') {
   process.stdout.write('git@github.com-acme-dev:acme-dev/gitrole.git\\n');
   process.exit(0);
@@ -529,6 +537,10 @@ if (args[0] === 'branch' && args[1] === '--show-current') {
   process.stdout.write('main\\n');
   process.exit(0);
 }
+if (args[0] === 'log' && args[1] === '--no-merges') {
+  process.stdout.write('old123\\u001fPat Person\\u001fpat@personal.example\\u001fchore: previous personal commit\\n');
+  process.exit(0);
+}
 if (args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'origin') {
   process.stdout.write('git@github.com-acme-dev:acme-dev/gitrole.git\\n');
   process.exit(0);
@@ -588,6 +600,7 @@ process.exit(1);
   assert.match(result.stdout, /no-role/);
   assert.match(result.stdout, /global/);
   assert.match(result.stdout, /warning/);
+  assert.match(result.stdout, /last non-merge commit  Pat Person <pat@personal.example> — chore: previous personal commit/);
   assert.equal(result.stderr, '');
 });
 
@@ -635,6 +648,10 @@ if (args[0] === 'rev-parse' && args.includes('@{upstream}')) {
 }
 if (args[0] === 'branch' && args[1] === '--show-current') {
   process.stdout.write('main\\n');
+  process.exit(0);
+}
+if (args[0] === 'log' && args[1] === '--no-merges') {
+  process.stdout.write('abc123\\u001fSynthesis Softworks\\u001fdev@synthesissoftworks.com\\u001ffeat: aligned local commit\\n');
   process.exit(0);
 }
 if (args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'origin') {
@@ -742,6 +759,10 @@ if (args[0] === 'branch' && args[1] === '--show-current') {
   process.stdout.write('main\\n');
   process.exit(0);
 }
+if (args[0] === 'log' && args[1] === '--no-merges') {
+  process.stdout.write('abc123\\u001fSynthesis Softworks\\u001fdev@synthesissoftworks.com\\u001ffeat: aligned local commit\\n');
+  process.exit(0);
+}
 if (args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'origin') {
   process.stdout.write('git@github.com-synsoftworksdev:synsoftworksdev/gitrole.git\\n');
   process.exit(0);
@@ -799,6 +820,10 @@ process.exit(1);
     result.stdout,
     /synsoft\s+Synthesis Softworks <dev@synthesissoftworks.com>\s+local override\s+aligned/
   );
+  assert.match(
+    result.stdout,
+    /last non-merge commit  Synthesis Softworks <dev@synthesissoftworks.com> — feat: aligned local commit/
+  );
   assert.equal(result.stderr, '');
 });
 
@@ -841,6 +866,10 @@ if (args[0] === 'rev-parse' && args.includes('@{upstream}')) {
 }
 if (args[0] === 'branch' && args[1] === '--show-current') {
   process.stdout.write('main\\n');
+  process.exit(0);
+}
+if (args[0] === 'log' && args[1] === '--no-merges') {
+  process.stdout.write('abc123\\u001fAlex Developer\\u001falex@work.example\\u001ffeat: aligned history\\n');
   process.exit(0);
 }
 if (args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'origin') {
@@ -907,6 +936,333 @@ process.exit(1);
   assert.match(result.stdout, /auth=ok/);
   assert.match(result.stdout, /overall=aligned/);
   assert.equal(result.stderr, '');
+});
+
+test('cli verify shows effective identity and latest non-merge commit when aligned', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-cli-verify-ok-'));
+  const configHome = path.join(tempDir, 'config');
+  const gitStubPath = path.join(tempDir, 'git-stub.mjs');
+  const sshStubPath = path.join(tempDir, 'ssh-stub.mjs');
+
+  await writeFile(
+    gitStubPath,
+    `#!/usr/bin/env node
+const args = process.argv.slice(2);
+if (args[0] === 'config' && args[1] === '--global' && args[2] === '--get' && args[3] === 'user.name') {
+  process.stdout.write('Sara Loera\\n');
+  process.exit(0);
+}
+if (args[0] === 'config' && args[1] === '--global' && args[2] === '--get' && args[3] === 'user.email') {
+  process.stdout.write('saraeloop@gmail.com\\n');
+  process.exit(0);
+}
+if (args[0] === 'config' && args[1] === '--local' && args[2] === '--get') {
+  process.exit(1);
+}
+if (args[0] === 'rev-parse' && args[1] === '--is-inside-work-tree') {
+  process.stdout.write('true\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args[1] === '--verify') {
+  process.stdout.write('abcdef0\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args[1] === '--show-toplevel') {
+  process.stdout.write('${tempDir.replaceAll("'", "'\\''")}\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args.includes('@{upstream}')) {
+  process.stdout.write('origin/main\\n');
+  process.exit(0);
+}
+if (args[0] === 'branch' && args[1] === '--show-current') {
+  process.stdout.write('main\\n');
+  process.exit(0);
+}
+if (args[0] === 'log' && args[1] === '--no-merges') {
+  process.stdout.write('abc123\\u001fSara Loera\\u001fsaraeloop@gmail.com\\u001fdocs: aligned commit\\n');
+  process.exit(0);
+}
+if (args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'origin') {
+  process.stdout.write('git@github.com-saraeloop:saraeloop/gitrole.git\\n');
+  process.exit(0);
+}
+process.exit(1);
+`,
+    'utf8'
+  );
+  await chmod(gitStubPath, 0o755);
+  await writeFile(
+    sshStubPath,
+    `#!/usr/bin/env node
+process.stderr.write("Hi saraeloop! You've successfully authenticated, but GitHub does not provide shell access.\\n");
+process.exit(1);
+`,
+    'utf8'
+  );
+  await chmod(sshStubPath, 0o755);
+  await mkdir(path.join(configHome, 'gitrole'), { recursive: true });
+  await writeFile(
+    path.join(configHome, 'gitrole', 'roles.json'),
+    JSON.stringify(
+      {
+        roles: [
+          {
+            name: 'saraeloop',
+            fullName: 'Sara Loera',
+            email: 'saraeloop@gmail.com',
+            githubUser: 'saraeloop',
+            githubHost: 'github.com-saraeloop'
+          }
+        ]
+      },
+      null,
+      2
+    ),
+    'utf8'
+  );
+
+  const env = {
+    ...process.env,
+    HOME: tempDir,
+    XDG_CONFIG_HOME: configHome,
+    GITROLE_GIT_BIN: gitStubPath,
+    GITROLE_SSH_BIN: sshStubPath
+  };
+
+  const result = spawnSync(process.execPath, [cliPath, 'verify'], {
+    encoding: 'utf8',
+    env
+  });
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /^verify/m);
+  assert.match(result.stdout, /identity\s+Sara Loera <saraeloop@gmail.com>/);
+  assert.match(result.stdout, /scope\s+global/);
+  assert.match(result.stdout, /last non-merge commit\s+Sara Loera <saraeloop@gmail.com> — docs: aligned commit/);
+  assert.match(result.stdout, /status\s+aligned/);
+  assert.equal(result.stderr, '');
+});
+
+test('cli verify exits 0 when no non-merge commit exists but identity is configured', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-cli-verify-none-'));
+  const configHome = path.join(tempDir, 'config');
+  const gitStubPath = path.join(tempDir, 'git-stub.mjs');
+  const sshStubPath = path.join(tempDir, 'ssh-stub.mjs');
+
+  await writeFile(
+    gitStubPath,
+    `#!/usr/bin/env node
+const args = process.argv.slice(2);
+if (args[0] === 'config' && args[1] === '--global' && args[2] === '--get' && args[3] === 'user.name') {
+  process.stdout.write('Alex Developer\\n');
+  process.exit(0);
+}
+if (args[0] === 'config' && args[1] === '--global' && args[2] === '--get' && args[3] === 'user.email') {
+  process.stdout.write('alex@work.example\\n');
+  process.exit(0);
+}
+if (args[0] === 'config' && args[1] === '--local' && args[2] === '--get') {
+  process.exit(1);
+}
+if (args[0] === 'rev-parse' && args[1] === '--is-inside-work-tree') {
+  process.stdout.write('true\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args[1] === '--verify') {
+  process.exit(1);
+}
+if (args[0] === 'rev-parse' && args[1] === '--show-toplevel') {
+  process.stdout.write('${tempDir.replaceAll("'", "'\\''")}\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args.includes('@{upstream}')) {
+  process.stdout.write('origin/main\\n');
+  process.exit(0);
+}
+if (args[0] === 'branch' && args[1] === '--show-current') {
+  process.stdout.write('main\\n');
+  process.exit(0);
+}
+if (args[0] === 'log' && args[1] === '--no-merges') {
+  process.stdout.write('');
+  process.exit(0);
+}
+if (args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'origin') {
+  process.stdout.write('git@github.com-acme-dev:acme-dev/gitrole.git\\n');
+  process.exit(0);
+}
+process.exit(1);
+`,
+    'utf8'
+  );
+  await chmod(gitStubPath, 0o755);
+  await writeFile(
+    sshStubPath,
+    `#!/usr/bin/env node
+process.stderr.write("Hi acme-dev! You've successfully authenticated, but GitHub does not provide shell access.\\n");
+process.exit(1);
+`,
+    'utf8'
+  );
+  await chmod(sshStubPath, 0o755);
+  await mkdir(path.join(configHome, 'gitrole'), { recursive: true });
+  await writeFile(
+    path.join(configHome, 'gitrole', 'roles.json'),
+    JSON.stringify(
+      {
+        roles: [
+          {
+            name: 'work',
+            fullName: 'Alex Developer',
+            email: 'alex@work.example',
+            githubUser: 'acme-dev',
+            githubHost: 'github.com-acme-dev'
+          }
+        ]
+      },
+      null,
+      2
+    ),
+    'utf8'
+  );
+
+  const env = {
+    ...process.env,
+    HOME: tempDir,
+    XDG_CONFIG_HOME: configHome,
+    GITROLE_GIT_BIN: gitStubPath,
+    GITROLE_SSH_BIN: sshStubPath
+  };
+
+  const result = spawnSync(process.execPath, [cliPath, 'verify'], {
+    encoding: 'utf8',
+    env
+  });
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /last non-merge commit\s+none/);
+  assert.match(result.stdout, /status\s+ready/);
+  assert.equal(result.stderr, '');
+});
+
+test('cli verify exits 2 when the latest non-merge commit author differs from the effective identity', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-cli-verify-warn-'));
+  const configHome = path.join(tempDir, 'config');
+  const gitStubPath = path.join(tempDir, 'git-stub.mjs');
+  const sshStubPath = path.join(tempDir, 'ssh-stub.mjs');
+
+  await writeFile(
+    gitStubPath,
+    `#!/usr/bin/env node
+const args = process.argv.slice(2);
+if (args[0] === 'config' && args[1] === '--global' && args[2] === '--get' && args[3] === 'user.name') {
+  process.stdout.write('Sara Loera\\n');
+  process.exit(0);
+}
+if (args[0] === 'config' && args[1] === '--global' && args[2] === '--get' && args[3] === 'user.email') {
+  process.stdout.write('saraeloop@gmail.com\\n');
+  process.exit(0);
+}
+if (args[0] === 'config' && args[1] === '--local' && args[2] === '--get') {
+  process.exit(1);
+}
+if (args[0] === 'rev-parse' && args[1] === '--is-inside-work-tree') {
+  process.stdout.write('true\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args[1] === '--verify') {
+  process.stdout.write('abcdef0\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args[1] === '--show-toplevel') {
+  process.stdout.write('${tempDir.replaceAll("'", "'\\''")}\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args.includes('@{upstream}')) {
+  process.stdout.write('origin/main\\n');
+  process.exit(0);
+}
+if (args[0] === 'branch' && args[1] === '--show-current') {
+  process.stdout.write('main\\n');
+  process.exit(0);
+}
+if (args[0] === 'log' && args[1] === '--no-merges') {
+  process.stdout.write('abc123\\u001fSynthesis Softworks\\u001fdev@synthesissoftworks.com\\u001ffeat: previous work commit\\n');
+  process.exit(0);
+}
+if (args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'origin') {
+  process.stdout.write('git@github.com-saraeloop:saraeloop/gitrole.git\\n');
+  process.exit(0);
+}
+process.exit(1);
+`,
+    'utf8'
+  );
+  await chmod(gitStubPath, 0o755);
+  await writeFile(
+    sshStubPath,
+    `#!/usr/bin/env node
+process.stderr.write("Hi saraeloop! You've successfully authenticated, but GitHub does not provide shell access.\\n");
+process.exit(1);
+`,
+    'utf8'
+  );
+  await chmod(sshStubPath, 0o755);
+  await mkdir(path.join(configHome, 'gitrole'), { recursive: true });
+  await writeFile(
+    path.join(configHome, 'gitrole', 'roles.json'),
+    JSON.stringify(
+      {
+        roles: [
+          {
+            name: 'saraeloop',
+            fullName: 'Sara Loera',
+            email: 'saraeloop@gmail.com',
+            githubUser: 'saraeloop',
+            githubHost: 'github.com-saraeloop'
+          }
+        ]
+      },
+      null,
+      2
+    ),
+    'utf8'
+  );
+
+  const env = {
+    ...process.env,
+    HOME: tempDir,
+    XDG_CONFIG_HOME: configHome,
+    GITROLE_GIT_BIN: gitStubPath,
+    GITROLE_SSH_BIN: sshStubPath
+  };
+
+  const result = spawnSync(process.execPath, [cliPath, 'verify'], {
+    encoding: 'utf8',
+    env
+  });
+
+  assert.equal(result.status, 2);
+  assert.match(result.stdout, /last non-merge commit\s+Synthesis Softworks <dev@synthesissoftworks.com> — feat: previous work commit/);
+  assert.match(result.stdout, /status\s+warning/);
+  assert.equal(result.stderr, '');
+});
+
+test('cli verify exits 1 on operational failure', () => {
+  const env = {
+    ...process.env,
+    GITROLE_GIT_BIN: path.join(os.tmpdir(), 'does-not-exist-gitrole-git-verify')
+  };
+
+  const result = spawnSync(process.execPath, [cliPath, 'verify'], {
+    encoding: 'utf8',
+    env
+  });
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  assert.match(result.stderr, /error: git is not installed or not available on PATH/);
 });
 
 test('cli runs correctly when invoked through a symlinked entrypoint', async () => {

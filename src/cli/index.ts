@@ -22,7 +22,8 @@ import {
   UnsupportedRemoteRewriteError,
   type AppDependencies,
   useRemoteForRole,
-  useRole
+  useRole,
+  verify
 } from '../application/use-cases.js';
 import { SystemGitConfig } from '../adapters/git-config.js';
 import { SystemGitRepository } from '../adapters/git-repository.js';
@@ -40,6 +41,7 @@ import {
   renderShortStatus,
   renderStatus,
   renderUsedRole,
+  renderVerify,
   renderWarning
 } from '../interface/renderer.js';
 
@@ -108,6 +110,7 @@ Examples:
   $ gitrole use work
   $ gitrole use work --local
   $ gitrole status
+  $ gitrole verify
   $ gitrole current --verbose
   $ gitrole remote use work
 `
@@ -246,6 +249,15 @@ Examples:
     .action(async (options: { short?: boolean }) => {
       const result = await getStatus(dependencies);
       io.stdout(options.short ? renderShortStatus(result) : renderStatus(result));
+      commandExitCode = result.overall === 'aligned' ? 0 : 2;
+    });
+
+  program
+    .command('verify')
+    .description('verify the effective identity against recent non-merge history')
+    .action(async () => {
+      const result = await verify(dependencies);
+      io.stdout(renderVerify(result));
       commandExitCode = result.overall === 'aligned' ? 0 : 2;
     });
 
