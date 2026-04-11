@@ -1,0 +1,101 @@
+---
+layout: layouts/base.njk
+title: Fix pushes using the wrong GitHub account
+eyebrow: Use case
+summary: Use this when commits look fine but SSH pushes still authenticate as the wrong GitHub account.
+coverImage: /assets/switch-identities.svg
+order: 1
+toc:
+  - id: when-to-use-this
+    label: When to use this
+  - id: start-with-doctor
+    label: Start with doctor
+  - id: check-the-remote
+    label: Check the remote
+  - id: check-your-ssh-setup
+    label: Check your SSH setup
+  - id: confirm-the-fix
+    label: Confirm the fix
+bestFor:
+  - Developers who already switched roles but still push through the wrong GitHub account
+  - Repositories that should use a GitHub SSH host alias for one specific identity
+relatedLinks:
+  - label: Overview
+    url: /
+  - label: Use the right Git identity for this repo
+    url: /guides/use-the-right-git-identity-for-this-repo/
+---
+
+<h2 id="when-to-use-this">When to use this</h2>
+
+Use this page when the repo identity looks right locally, but pushes still go through the wrong GitHub account.
+
+Common signs:
+
+- `gitrole status` looks warning-heavy even after switching roles
+- GitHub shows the wrong account when you push over SSH
+- the repository remote is still pointing at the wrong SSH host alias
+
+<h2 id="start-with-doctor">Start with doctor</h2>
+
+Run:
+
+```bash
+gitrole doctor
+```
+
+`doctor` is the full explanation view. It is the fastest way to see whether the problem is in the commit identity, the remote configuration, or the SSH auth path.
+
+If you want the raw result for scripting or debugging, use:
+
+```bash
+gitrole doctor --json
+```
+
+<h2 id="check-the-remote">Check the remote</h2>
+
+If the role expects a GitHub host alias, the remote needs to point at that alias too.
+
+When `doctor` shows that the repo host does not match the role, rewrite `origin`:
+
+```bash
+gitrole remote set work
+```
+
+That keeps the same owner and repository name, but swaps the host to the alias configured for the `work` role.
+
+<h2 id="check-your-ssh-setup">Check your SSH setup</h2>
+
+If the remote host is right but pushes still authenticate as the wrong account, inspect the SSH alias in `~/.ssh/config`.
+
+Example:
+
+```sshconfig
+Host github.com-acme-dev
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/id_work
+  IdentitiesOnly yes
+```
+
+Then make sure the saved role points at the same SSH setup:
+
+```bash
+gitrole add work \
+  --name "Alex Developer" \
+  --email "alex@work.example" \
+  --ssh ~/.ssh/id_work \
+  --github-user acme-dev \
+  --github-host github.com-acme-dev
+```
+
+<h2 id="confirm-the-fix">Confirm the fix</h2>
+
+After updating the remote or SSH alias, rerun the checks:
+
+```bash
+gitrole status
+gitrole doctor
+```
+
+Use `status` for the quick daily check. Use `doctor` again if you need to confirm that the remote host and SSH account now match the selected role.
