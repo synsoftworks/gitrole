@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>gitrole Docs</title>
+    <meta
+      name="description"
+      content="gitrole documentation for installation, role switching, verification, scoped use, and GitHub SSH host aliases."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <nav class="topbar">
+          <a class="brand" href="#top">gitrole</a>
+          <div class="topbar-links">
+            <a href="#quickstart">Quickstart</a>
+            <a href="#commands">Commands</a>
+            <a href="#verification">Verification</a>
+            <a href="#ssh-host-aliases">SSH Aliases</a>
+            <a href="https://github.com/synsoftworks/gitrole">GitHub</a>
+          </div>
+        </nav>
+
+        <div class="hero-copy" id="top">
+          <p class="eyebrow">Docs</p>
+          <h1>Switch your git identity without guessing what the next commit will use.</h1>
+          <p class="hero-text">
+            <code>gitrole</code> stores named git identities, applies them at global or repo-local
+            scope, and helps you verify whether commit identity, remote configuration, and SSH auth
+            are actually aligned before you push.
+          </p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="#quickstart">Start Here</a>
+            <a class="button button-secondary" href="https://www.npmjs.com/package/gitrole"
+              >npm package</a
+            >
+          </div>
+        </div>
+      </header>
+
+      <main class="content">
+        <section class="section two-up" id="install">
+          <div class="card">
+            <p class="section-label">Install</p>
+            <h2>Use the package directly.</h2>
+            <pre><code>npm install -g gitrole</code></pre>
+            <pre><code>npx gitrole --help</code></pre>
+          </div>
+
+          <div class="card">
+            <p class="section-label">What it does</p>
+            <ul class="feature-list">
+              <li>Stores named git identity profiles</li>
+              <li>Switches global or repo-local commit identity</li>
+              <li>Optionally loads an SSH key with <code>ssh-add</code></li>
+              <li>Checks whether repo remote and SSH auth match the selected role</li>
+              <li>Explains the effective identity before the next commit</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="section" id="quickstart">
+          <p class="section-label">Quickstart</p>
+          <h2>Save a role, switch to it, then verify.</h2>
+          <div class="callout">
+            <p>
+              Add a role before you use it. <code>gitrole use &lt;name&gt;</code> switches to a
+              saved role; it does not create one.
+            </p>
+          </div>
+          <pre><code>gitrole add work \
+  --name "Alex Developer" \
+  --email "alex@work.example" \
+  --ssh ~/.ssh/id_work \
+  --github-user acme-dev \
+  --github-host github.com-acme-dev
+
+gitrole use work
+gitrole status
+gitrole verify</code></pre>
+        </section>
+
+        <section class="section two-up" id="scope">
+          <div class="card">
+            <p class="section-label">Scope</p>
+            <h2>Use global when you mean global. Use local when a repo must stay isolated.</h2>
+            <pre><code>gitrole use work
+gitrole use work --global
+gitrole use work --local</code></pre>
+            <ul class="feature-list">
+              <li><code>use &lt;role&gt;</code> defaults to global scope</li>
+              <li><code>--global</code> is explicit global scope</li>
+              <li><code>--local</code> writes only repo-local <code>user.name</code> and <code>user.email</code></li>
+              <li><code>--local</code> requires being inside a git repository</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <p class="section-label">Verification</p>
+            <h2>See the effective identity, not just raw git config.</h2>
+            <pre><code>gitrole status
+work  Alex Developer &lt;alex@work.example&gt;  local override  aligned
+last non-merge commit  Alex Developer &lt;alex@work.example&gt; — docs(cli): improve terminal help text</code></pre>
+          </div>
+        </section>
+
+        <section class="section" id="commands">
+          <p class="section-label">Commands</p>
+          <h2>Command surface</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Command</th>
+                  <th>Purpose</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>gitrole add &lt;name&gt; --name "..." --email "..."</code></td>
+                  <td>Save or update a named role</td>
+                </tr>
+                <tr>
+                  <td><code>gitrole use &lt;name&gt; [--global | --local]</code></td>
+                  <td>Apply a role globally or to the current repository</td>
+                </tr>
+                <tr>
+                  <td><code>gitrole current</code></td>
+                  <td>Show which saved role matches the effective identity</td>
+                </tr>
+                <tr>
+                  <td><code>gitrole current --verbose</code></td>
+                  <td>Show the active role plus repo and auth diagnostics</td>
+                </tr>
+                <tr>
+                  <td><code>gitrole list</code></td>
+                  <td>List saved roles and mark the active one</td>
+                </tr>
+                <tr>
+                  <td><code>gitrole status</code></td>
+                  <td>Compact human-readable alignment summary</td>
+                </tr>
+                <tr>
+                  <td><code>gitrole status --short</code></td>
+                  <td>Stable one-line output for scripts and prompts</td>
+                </tr>
+                <tr>
+                  <td><code>gitrole verify</code></td>
+                  <td>Confirm the next commit identity against recent non-merge history</td>
+                </tr>
+                <tr>
+                  <td><code>gitrole doctor</code></td>
+                  <td>Diagnose identity, repo, remote, and SSH auth alignment</td>
+                </tr>
+                <tr>
+                  <td><code>gitrole doctor --json</code></td>
+                  <td>Return the raw diagnostic result contract as JSON</td>
+                </tr>
+                <tr>
+                  <td><code>gitrole remote use &lt;name&gt;</code></td>
+                  <td>Rewrite <code>origin</code> to the role’s configured SSH host alias</td>
+                </tr>
+                <tr>
+                  <td><code>gitrole remove &lt;name&gt;</code></td>
+                  <td>Remove a saved role</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section two-up" id="verification">
+          <div class="card">
+            <p class="section-label">Status</p>
+            <h2>Fast scan</h2>
+            <pre><code>gitrole status
+gitrole status --short</code></pre>
+            <p>
+              Use <code>status</code> for the compact human view. Use
+              <code>status --short</code> for scripts, prompts, and CI.
+            </p>
+          </div>
+
+          <div class="card">
+            <p class="section-label">Verify</p>
+            <h2>Trust the next commit</h2>
+            <pre><code>gitrole verify
+
+verify
+  identity  Alex Developer &lt;alex@work.example&gt;
+  scope     local
+  role      work
+  next commit Alex Developer &lt;alex@work.example&gt;
+  last non-merge commit Alex Developer &lt;alex@work.example&gt; — docs(cli): improve terminal help text
+  status    aligned</code></pre>
+            <p>
+              <code>verify</code> is the dedicated command for the “did the switch really take
+              effect?” question.
+            </p>
+          </div>
+        </section>
+
+        <section class="section" id="ssh-host-aliases">
+          <p class="section-label">SSH Host Aliases</p>
+          <h2>Use GitHub host aliases for deterministic SSH identity.</h2>
+          <pre><code>Host github.com-acme-dev
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/id_work
+  IdentitiesOnly yes</code></pre>
+          <p>
+            After that, <code>gitrole remote use work</code> can rewrite
+            <code>origin</code> to use the matching host alias while preserving the owner and repo
+            slug.
+          </p>
+        </section>
+
+        <section class="section two-up" id="notes">
+          <div class="card">
+            <p class="section-label">What it does not do</p>
+            <ul class="feature-list">
+              <li>No GitHub browser or session switching</li>
+              <li>No <code>gh auth</code>, HTTPS credential, or token management</li>
+              <li>No interactive prompts</li>
+              <li>No automatic SSH config editing</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <p class="section-label">Project</p>
+            <ul class="feature-list">
+              <li><a href="https://github.com/synsoftworks/gitrole">Repository</a></li>
+              <li><a href="https://www.npmjs.com/package/gitrole">npm package</a></li>
+              <li><a href="https://github.com/synsoftworks/gitrole/blob/main/README.md">README</a></li>
+              <li><a href="https://github.com/synsoftworks/gitrole/blob/main/CONTRIBUTING.md">Contributing</a></li>
+              <li><a href="https://github.com/synsoftworks/gitrole/blob/main/CODE_OF_CONDUCT.md">Code of Conduct</a></li>
+              <li><a href="https://github.com/synsoftworks/gitrole/blob/main/LICENSE">MIT License</a></li>
+            </ul>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

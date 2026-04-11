@@ -1,5 +1,35 @@
-dist
-dist-test
-node_modules
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+dist-test/
+*.tsbuildinfo
+
+# Logs & diagnostics
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment & secrets (if you add them later)
+.env
+.env.*
+!.env.example
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Editors / IDEs
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Optional: local scratch / notes (remove if you don't want this)
+# *.local.md
+
+# Optional: only if you intentionally keep ROADMAP local
 ROADMAP.md
