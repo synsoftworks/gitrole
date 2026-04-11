@@ -19,8 +19,12 @@
         <a class="brand" href="{{ '/' | url }}">{{ site.productName }}</a>
         <nav class="header-nav" aria-label="Top navigation">
           <a href="{{ '/' | url }}">Overview</a>
-          <a href="{{ '/guides/' | url }}">Guides</a>
-          <a href="{{ '/use-cases/' | url }}">Use cases</a>
+          {% if collections.guides.length %}
+            <a href="{{ collections.guides[0].url | url }}">Guide</a>
+          {% endif %}
+          {% if collections.useCases.length %}
+            <a href="{{ collections.useCases[0].url | url }}">Use case</a>
+          {% endif %}
         </nav>
         <div class="header-actions">
           <a class="header-link" href="{{ site.npmUrl }}">npm</a>
@@ -40,9 +44,6 @@
 
         <div class="sidebar-group">
           <p class="sidebar-label">Guides</p>
-          <a href="{{ '/guides/' | url }}" {% if page.url == '/guides/' %}aria-current="page"{% endif %}>
-            All guides
-          </a>
           {% for entry in collections.guides %}
             <a href="{{ entry.url | url }}" {% if page.url == entry.url %}aria-current="page"{% endif %}>
               {{ entry.data.title }}
@@ -52,9 +53,6 @@
 
         <div class="sidebar-group">
           <p class="sidebar-label">Use cases</p>
-          <a href="{{ '/use-cases/' | url }}" {% if page.url == '/use-cases/' %}aria-current="page"{% endif %}>
-            All use cases
-          </a>
           {% for entry in collections.useCases %}
             <a href="{{ entry.url | url }}" {% if page.url == entry.url %}aria-current="page"{% endif %}>
               {{ entry.data.title }}

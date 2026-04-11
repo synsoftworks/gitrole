@@ -3,7 +3,6 @@ layout: layouts/base.njk
 title: Fix pushes using the wrong GitHub account
 eyebrow: Use case
 summary: Use this when commits look fine but SSH pushes still authenticate as the wrong GitHub account.
-coverImage: /assets/switch-identities.svg
 order: 1
 ---
 
