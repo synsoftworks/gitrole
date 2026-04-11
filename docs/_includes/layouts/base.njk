@@ -17,15 +17,6 @@
     <header class="site-header">
       <div class="site-header-inner">
         <a class="brand" href="{{ '/' | url }}">{{ site.productName }}</a>
-        <nav class="header-nav" aria-label="Top navigation">
-          <a href="{{ '/' | url }}">Overview</a>
-          {% if collections.guides.length %}
-            <a href="{{ collections.guides[0].url | url }}">Guide</a>
-          {% endif %}
-          {% if collections.useCases.length %}
-            <a href="{{ collections.useCases[0].url | url }}">Use case</a>
-          {% endif %}
-        </nav>
         <div class="header-actions">
           <a class="header-link" href="{{ site.npmUrl }}">npm</a>
           <a class="header-link" href="{{ site.repositoryUrl }}">GitHub</a>

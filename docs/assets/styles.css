@@ -73,19 +73,12 @@ pre {
   text-decoration: none;
 }
 
-.header-nav,
 .header-actions {
   display: flex;
   align-items: center;
   gap: 18px;
 }
 
-.header-nav {
-  flex: 1;
-  margin-left: 10px;
-}
-
-.header-nav a,
 .header-link {
   color: var(--muted);
   text-decoration: none;
@@ -93,7 +86,6 @@ pre {
   transition: color 0.1s;
 }
 
-.header-nav a:hover,
 .header-link:hover {
   color: var(--text);
 }
@@ -484,10 +476,6 @@ pre code {
   .nav-toggle {
     display: inline-flex;
     flex: 0 0 auto;
-  }
-
-  .header-nav {
-    display: none;
   }
 
   .docs-shell {

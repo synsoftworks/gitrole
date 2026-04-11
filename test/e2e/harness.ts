@@ -111,6 +111,14 @@ export function runCli(
   });
 }
 
+export function useRole(
+  workspace: HermeticWorkspace,
+  roleName: string,
+  scope: 'global' | 'local' = 'global'
+): SpawnResult {
+  return runCli(workspace, ['use', roleName, ...(scope === 'local' ? ['--local'] : [])]);
+}
+
 export function runGit(
   workspace: HermeticWorkspace,
   args: string[],
@@ -203,6 +211,11 @@ export function getOriginUrl(workspace: HermeticWorkspace): string {
   const result = runGit(workspace, ['remote', 'get-url', 'origin']);
   mustSucceed(result, 'failed to read origin URL');
   return result.stdout.trim();
+}
+
+export function parseJsonOutput<T>(result: SpawnResult, context: string): T {
+  mustSucceed(result, context);
+  return JSON.parse(result.stdout) as T;
 }
 
 export function getLocalConfigValue(workspace: HermeticWorkspace, key: string): string {
