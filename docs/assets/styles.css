@@ -41,7 +41,7 @@ pre {
   font-family: var(--mono);
 }
 
-/* ── Header ─────────────────────────────────────────────── */
+/* Header */
 
 .site-header {
   position: sticky;
@@ -94,7 +94,7 @@ pre {
   color: var(--text);
 }
 
-/* ── Shell layout ────────────────────────────────────────── */
+/* Shell layout */
 
 .docs-shell {
   display: grid;
@@ -116,7 +116,7 @@ pre {
   border-right: 1px solid var(--line);
 }
 
-/* ── Sidebar ─────────────────────────────────────────────── */
+/* Sidebar */
 
 .sidebar-group + .sidebar-group {
   margin-top: 28px;
@@ -156,7 +156,7 @@ pre {
   background: rgba(17, 17, 17, 0.06);
 }
 
-/* ── Main content ────────────────────────────────────────── */
+/* Main content */
 
 .docs-main {
   min-width: 0;
@@ -198,7 +198,7 @@ pre {
   background: var(--panel);
 }
 
-/* ── Doc content typography ──────────────────────────────── */
+/* Doc content typography */
 
 .doc-content {
   padding-top: 28px;
@@ -239,7 +239,7 @@ pre {
 }
 
 
-/* ── Grid layouts ────────────────────────────────────────── */
+/* Grid layouts */
 
 .button-row,
 .card-grid,
@@ -265,7 +265,7 @@ pre {
   grid-template-columns: repeat(2, minmax(0, max-content));
 }
 
-/* ── Buttons ─────────────────────────────────────────────── */
+/* Buttons */
 
 .button {
   display: inline-flex;
@@ -301,7 +301,7 @@ pre {
   background: var(--panel);
 }
 
-/* ── Surface / cards ─────────────────────────────────────── */
+/* Surface / cards */
 
 .surface,
 .reference-card,
@@ -329,7 +329,7 @@ pre {
   margin-bottom: 0;
 }
 
-/* ── Reference card ──────────────────────────────────────── */
+/* Reference card */
 
 .reference-card {
   display: flex;
@@ -356,7 +356,7 @@ pre {
   box-shadow: 0 2px 8px rgba(17, 17, 17, 0.07);
 }
 
-/* ── Eyebrow labels ──────────────────────────────────────── */
+/* Eyebrow labels */
 
 .eyebrow-inline {
   display: inline-block;
@@ -368,7 +368,7 @@ pre {
   text-transform: uppercase;
 }
 
-/* ── Command list ────────────────────────────────────────── */
+/* Command list */
 
 .command-list {
   margin-top: 18px;
@@ -388,7 +388,7 @@ pre {
   margin-bottom: 0;
 }
 
-/* ── Code blocks ─────────────────────────────────────────── */
+/* Code blocks */
 
 pre {
   overflow-x: auto;
@@ -418,7 +418,7 @@ pre code {
   background: transparent;
 }
 
-/* ── Responsive ──────────────────────────────────────────── */
+/* Responsive */
 
 @media (max-width: 1180px) {
   .docs-shell {
