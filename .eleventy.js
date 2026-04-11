@@ -1,5 +1,6 @@
 export default function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy({ 'docs/assets': 'assets' });
+  eleventyConfig.addPassthroughCopy({ 'docs/CNAME': 'CNAME' });
 
   eleventyConfig.addCollection('guides', (collectionApi) =>
     collectionApi
