@@ -1,6 +1,6 @@
 {
   "name": "gitrole",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "description": "Switch your full git identity in one command.",
   "type": "module",
   "bin": {
@@ -36,7 +36,7 @@
     "type": "git",
     "url": "git+https://github.com/synsoftworks/gitrole.git"
   },
-  "homepage": "https://github.com/synsoftworks/gitrole#readme",
+  "homepage": "https://synsoftworks.github.io/gitrole",
   "bugs": {
     "url": "https://github.com/synsoftworks/gitrole/issues"
   },

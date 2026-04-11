@@ -42,12 +42,12 @@ gitrole doctor
 | `gitrole add <name> --name "..." --email "..." [--ssh ...] [--github-user ...] [--github-host ...]` | Create or update a saved role profile                          |
 | `gitrole use <name> [--global \| --local]`                                                          | Switch git identity at global or repository-local scope and optionally load SSH key |
 | `gitrole current`                                                                                   | Show which saved role matches the active commit identity       |
-| `gitrole current --verbose`                                                                         | Show current role plus repo and auth diagnostics               |
 | `gitrole list`                                                                                      | List all saved roles and mark the active one                   |
-| `gitrole status`                                                                                    | Compact one-line alignment summary                             |
+| `gitrole status`                                                                                    | Quick human-readable repo and alignment check                  |
 | `gitrole status --short`                                                                            | Machine-friendly alignment fields for scripts and prompts      |
 | `gitrole doctor`                                                                                    | Diagnose commit identity, remote config, and SSH push identity |
-| `gitrole remote use <name>`                                                                         | Rewrite origin to the role's GitHub SSH host alias             |
+| `gitrole doctor --json`                                                                             | Emit the full diagnosis as structured JSON                     |
+| `gitrole remote set <name>`                                                                         | Rewrite origin to the role's GitHub SSH host alias             |
 | `gitrole remove <name>`                                                                             | Remove a saved role profile                                    |
 
 ## SSH Host Aliases
@@ -62,7 +62,7 @@ Host github.com-acme-dev
   IdentitiesOnly yes
 ```
 
-Then `gitrole remote use work` rewrites `origin` to use that alias, ensuring pushes authenticate as the right GitHub account.
+Then `gitrole remote set work` rewrites `origin` to use that alias, ensuring pushes authenticate as the right GitHub account.
 
 ## SSH Config vs gitrole Roles
 
@@ -127,6 +127,8 @@ switched to work
   name  Alex Developer
   email alex@work.example
 ```
+
+If repo alignment issues are detected after a successful switch, `gitrole use` prints a short repo note and points you to `gitrole status`.
 
 `gitrole status` reflects the effective scope in its plain-text output:
 

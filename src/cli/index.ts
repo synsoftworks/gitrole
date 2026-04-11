@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { realpathSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { Command } from 'commander';
@@ -20,8 +20,7 @@ import {
   RoleMissingGithubHostError,
   UnsupportedRemoteRewriteError,
   useRemoteForRole,
-  useRole,
-  verify
+  useRole
 } from '../application/use-cases/index.js';
 import type { AppDependencies, DoctorDependencies } from '../application/contracts.js';
 import { SystemGitConfig } from '../adapters/git-config.js';
@@ -33,15 +32,15 @@ import {
   renderCurrentRole,
   renderDoctor,
   renderError,
+  renderRepoNote,
   renderRemovedRole,
   renderRemoteUse,
   renderRoleList,
   renderSavedRole,
+  renderSshNote,
   renderShortStatus,
   renderStatus,
-  renderUsedRole,
-  renderVerify,
-  renderWarning
+  renderUsedRole
 } from '../interface/renderer.js';
 
 interface Output {
@@ -99,7 +98,7 @@ export function createProgram(
   program
     .name('gitrole')
     .description('Manage named git identities and diagnose repo alignment.')
-    .version('0.2.0')
+    .version(getPackageVersion())
     .addHelpText(
       'after',
       `
@@ -108,10 +107,10 @@ Examples:
   $ gitrole add work --name "Alex Developer" --email "alex@work.example"
   $ gitrole use work
   $ gitrole use work --local
+  $ gitrole current
   $ gitrole status
-  $ gitrole verify
-  $ gitrole current --verbose
-  $ gitrole remote use work
+  $ gitrole doctor
+  $ gitrole remote set work
 `
     );
 
@@ -171,6 +170,7 @@ Scope:
 
 Notes:
   If the role defines an SSH key, gitrole still loads it with ssh-add.
+  If repo alignment issues are detected after the switch, gitrole prints a repo note.
 
 Examples:
   $ gitrole use work
@@ -188,37 +188,26 @@ Examples:
       io.stdout(renderUsedRole(result));
 
       if (result.ssh && !result.ssh.ok && result.ssh.message) {
-        io.stderr(renderWarning(result.ssh.message));
+        io.stdout(renderSshNote(result.ssh.message));
       }
 
-      for (const check of result.alignment?.checks ?? []) {
-        if (check.status === 'warn') {
-          io.stderr(renderWarning(check.message));
-        }
+      if (result.alignment?.checks.some((check) => check.status === 'warn')) {
+        io.stdout(renderRepoNote());
       }
     });
 
   program
     .command('current')
-    .description('show the active role or verbose repo diagnostics')
-    .option('--verbose', 'show effective identity plus repo and auth diagnostics')
+    .description('show the effective identity')
     .addHelpText(
       'after',
       `
 
 Examples:
   $ gitrole current
-  $ gitrole current --verbose
 `
     )
-    .action(async (options: { verbose?: boolean }) => {
-      if (options.verbose) {
-        const result = await doctor(dependencies);
-        io.stdout(renderDoctor(result, 'current'));
-        commandExitCode = getDoctorExitCode(result);
-        return;
-      }
-
+    .action(async () => {
       const result = await getCurrentRole(dependencies);
       io.stdout(renderCurrentRole(result));
     });
@@ -230,7 +219,7 @@ Examples:
 
   program
     .command('status')
-    .description('show a compact alignment summary')
+    .description('show a quick human-readable alignment check')
     .option('--short', 'show machine-friendly one-line status output')
     .addHelpText(
       'after',
@@ -248,15 +237,6 @@ Examples:
     .action(async (options: { short?: boolean }) => {
       const result = await getStatus(dependencies);
       io.stdout(options.short ? renderShortStatus(result) : renderStatus(result));
-      commandExitCode = result.overall === 'aligned' ? 0 : 2;
-    });
-
-  program
-    .command('verify')
-    .description('verify the effective identity against recent non-merge history')
-    .action(async () => {
-      const result = await verify(dependencies);
-      io.stdout(renderVerify(result));
       commandExitCode = result.overall === 'aligned' ? 0 : 2;
     });
 
@@ -292,13 +272,13 @@ Example:
       'after',
       `
 
-Use 'gitrole remote use <role>' when the current origin host alias is wrong
+Use 'gitrole remote set <role>' when the current origin host alias is wrong
 for the selected role.
 `
     );
 
   remoteCommand
-    .command('use')
+    .command('set')
     .description("rewrite origin to the role's GitHub host alias")
     .argument('<name>', 'saved role name')
     .addHelpText(
@@ -311,7 +291,7 @@ Behavior:
   - intended for SSH remotes
 
 Example:
-  $ gitrole remote use work
+  $ gitrole remote set work
 `
     )
     .action(async (name: string) => {
@@ -331,6 +311,24 @@ Example:
   Reflect.set(program, '__gitroleExitCode', () => commandExitCode);
 
   return program;
+}
+
+function getPackageVersion(): string {
+  for (const relativePath of ['../../package.json', '../../../package.json']) {
+    try {
+      const packageJson = JSON.parse(
+        readFileSync(new URL(relativePath, import.meta.url), 'utf8')
+      ) as { version?: string };
+
+      if (packageJson.version) {
+        return packageJson.version;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return '0.0.0';
 }
 
 /**
