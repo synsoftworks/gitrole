@@ -783,6 +783,7 @@ test('doctor stays aligned for org remotes when auth and host match the role', a
   assert.equal(result.repository.remote?.owner, 'acme-org');
   assert.equal(result.overall, 'aligned');
   assert.equal(result.checks.some((check) => check.label === 'owner'), false);
+  assert.equal(result.checks.some((check) => check.status === 'warn'), false);
   assert.equal(status.overall, 'aligned');
 });
 

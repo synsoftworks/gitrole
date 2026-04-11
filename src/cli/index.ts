@@ -229,6 +229,10 @@ Views:
   default   compact human-readable summary
   --short   stable one-line format for scripts, prompts, and automation
 
+Policy:
+  status warns only on actionable mismatches.
+  Observed context alone does not degrade the overall result.
+
 Examples:
   $ gitrole status
   $ gitrole status --short
@@ -253,6 +257,11 @@ Checks:
   - repository context and branch
   - origin remote configuration
   - SSH auth alignment for SSH remotes
+
+Policy:
+  gitrole warns on violated expectations, not assumptions.
+  githubUser checks SSH auth. githubHost checks the remote host.
+  Remote owner/repository is context, not a warning by default.
 
 Example:
   $ gitrole doctor

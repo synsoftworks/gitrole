@@ -94,6 +94,8 @@ Make this distinction early:
   </div>
 </div>
 
+> `gitrole` warns on violated expectations, not assumptions. `githubUser` checks SSH auth, `githubHost` checks the remote host, and remote owner/repository is context by default.
+
 <h2 id="install">Install</h2>
 
 Install comes after understanding, not before:
@@ -141,6 +143,20 @@ Use the guide when you want the standard setup. Use a use case when you already 
     <div>
       <strong>Use case: Fix pushes using the wrong GitHub account</strong>
       <span>Work through the repo, remote, and SSH checks when pushes go to the wrong account.</span>
+    </div>
+    <span aria-hidden="true">&rarr;</span>
+  </a>
+  <a class="reference-card" href="{{ '/use-cases/use-gitrole-as-an-identity-preflight-for-agents-and-automation/' | url }}">
+    <div>
+      <strong>Use case: Use gitrole as an identity preflight for agents and automation</strong>
+      <span>Check repo identity state before an agent commits or pushes under an existing role.</span>
+    </div>
+    <span aria-hidden="true">&rarr;</span>
+  </a>
+  <a class="reference-card" href="{{ '/use-cases/give-an-agent-its-own-git-identity/' | url }}">
+    <div>
+      <strong>Use case: Give an agent its own Git identity</strong>
+      <span>Keep automated commits and pushes separate from human identities.</span>
     </div>
     <span aria-hidden="true">&rarr;</span>
   </a>
