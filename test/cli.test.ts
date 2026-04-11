@@ -233,6 +233,111 @@ process.exit(1);
   assert.equal(parsed.sshAuth.githubUser, 'acme-dev');
 });
 
+test('cli doctor --json stays aligned when remote owner differs from the auth user', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-cli-doctor-json-org-'));
+  const configHome = path.join(tempDir, 'config');
+  const gitStubPath = path.join(tempDir, 'git-stub.mjs');
+  const sshStubPath = path.join(tempDir, 'ssh-stub.mjs');
+
+  await writeFile(
+    gitStubPath,
+    `#!/usr/bin/env node
+const args = process.argv.slice(2);
+if (args[0] === 'config' && args[1] === '--global' && args[2] === '--get' && args[3] === 'user.name') {
+  process.stdout.write('Alex Developer\\n');
+  process.exit(0);
+}
+if (args[0] === 'config' && args[1] === '--global' && args[2] === '--get' && args[3] === 'user.email') {
+  process.stdout.write('alex@personal.example\\n');
+  process.exit(0);
+}
+if (args[0] === 'config' && args[1] === '--local' && args[2] === '--get') {
+  process.exit(1);
+}
+if (args[0] === 'rev-parse' && args[1] === '--is-inside-work-tree') {
+  process.stdout.write('true\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args[1] === '--verify') {
+  process.stdout.write('abcdef0\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args[1] === '--show-toplevel') {
+  process.stdout.write('${tempDir.replaceAll("'", "'\\''")}\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args.includes('@{upstream}')) {
+  process.stdout.write('origin/main\\n');
+  process.exit(0);
+}
+if (args[0] === 'branch' && args[1] === '--show-current') {
+  process.stdout.write('main\\n');
+  process.exit(0);
+}
+if (args[0] === 'log' && args[1] === '--no-merges') {
+  process.stdout.write('abc123\\u001fAlex Developer\\u001falex@personal.example\\u001ffeat: aligned personal commit\\n');
+  process.exit(0);
+}
+if (args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'origin') {
+  process.stdout.write('git@github.com-personal:acme-org/gitrole.git\\n');
+  process.exit(0);
+}
+process.exit(1);
+`,
+    'utf8'
+  );
+  await chmod(gitStubPath, 0o755);
+  await writeFile(
+    sshStubPath,
+    `#!/usr/bin/env node
+process.stderr.write("Hi alex-dev! You've successfully authenticated, but GitHub does not provide shell access.\\n");
+process.exit(1);
+`,
+    'utf8'
+  );
+  await chmod(sshStubPath, 0o755);
+  await mkdir(path.join(configHome, 'gitrole'), { recursive: true });
+  await writeFile(
+    path.join(configHome, 'gitrole', 'roles.json'),
+    JSON.stringify(
+      {
+        roles: [
+          {
+            name: 'personal',
+            fullName: 'Alex Developer',
+            email: 'alex@personal.example',
+            githubUser: 'alex-dev',
+            githubHost: 'github.com-personal'
+          }
+        ]
+      },
+      null,
+      2
+    ),
+    'utf8'
+  );
+
+  const env = {
+    ...process.env,
+    HOME: tempDir,
+    XDG_CONFIG_HOME: configHome,
+    GITROLE_GIT_BIN: gitStubPath,
+    GITROLE_SSH_BIN: sshStubPath
+  };
+
+  const result = spawnSync(process.execPath, [cliPath, 'doctor', '--json'], {
+    encoding: 'utf8',
+    env
+  });
+  const parsed = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(parsed.overall, 'aligned');
+  assert.equal(parsed.repository.remote.owner, 'acme-org');
+  assert.equal(parsed.checks.some((check: { label: string }) => check.label === 'owner'), false);
+  assert.equal(result.stderr, '');
+});
+
 test('cli doctor --json emits valid JSON and exits 2 when warnings are present', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-cli-doctor-json-warn-'));
   const configHome = path.join(tempDir, 'config');
