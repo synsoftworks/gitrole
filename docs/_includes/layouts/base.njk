@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% if title %}{{ title }} - {% endif %}{{ site.title }}</title>
+    <meta name="description" content="{{ description or summary or site.description }}" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=Manrope:wght@400;500;600;700;800&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="{{ '/assets/styles.css' | url }}" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-header-inner">
+        <a class="brand" href="{{ '/' | url }}">{{ site.productName }}</a>
+        <nav class="header-nav" aria-label="Top navigation">
+          <a href="{{ '/' | url }}">Overview</a>
+          <a href="{{ '/guides/' | url }}">Guides</a>
+          <a href="{{ '/use-cases/' | url }}">Use cases</a>
+        </nav>
+        <div class="header-actions">
+          <a class="header-link" href="{{ site.npmUrl }}">npm</a>
+          <a class="header-link" href="{{ site.repositoryUrl }}">GitHub</a>
+        </div>
+      </div>
+    </header>
+
+    <div class="docs-shell">
+      <aside class="sidebar" aria-label="Site navigation">
+        <div class="sidebar-group">
+          <p class="sidebar-label">Overview</p>
+          <a href="{{ '/' | url }}" {% if page.url == '/' %}aria-current="page"{% endif %}>
+            What gitrole does
+          </a>
+        </div>
+
+        <div class="sidebar-group">
+          <p class="sidebar-label">Guides</p>
+          <a href="{{ '/guides/' | url }}" {% if page.url == '/guides/' %}aria-current="page"{% endif %}>
+            All guides
+          </a>
+          {% for entry in collections.guides %}
+            <a href="{{ entry.url | url }}" {% if page.url == entry.url %}aria-current="page"{% endif %}>
+              {{ entry.data.title }}
+            </a>
+          {% endfor %}
+        </div>
+
+        <div class="sidebar-group">
+          <p class="sidebar-label">Use cases</p>
+          <a href="{{ '/use-cases/' | url }}" {% if page.url == '/use-cases/' %}aria-current="page"{% endif %}>
+            All use cases
+          </a>
+          {% for entry in collections.useCases %}
+            <a href="{{ entry.url | url }}" {% if page.url == entry.url %}aria-current="page"{% endif %}>
+              {{ entry.data.title }}
+            </a>
+          {% endfor %}
+        </div>
+
+        <div class="sidebar-group">
+          <p class="sidebar-label">Project</p>
+          <a href="{{ site.repositoryUrl }}">Repository</a>
+          <a href="{{ site.npmUrl }}">npm package</a>
+          <a href="https://github.com/synsoftworks/gitrole/blob/main/README.md">README</a>
+        </div>
+      </aside>
+
+      <main class="docs-main">
+        <article class="doc">
+          {% if eyebrow or title %}
+            <header class="page-intro">
+              {% if eyebrow %}
+                <p class="eyebrow">{{ eyebrow }}</p>
+              {% endif %}
+              {% if title %}
+                <h1>{{ title }}</h1>
+              {% endif %}
+              {% if summary %}
+                <p class="lede">{{ summary }}</p>
+              {% endif %}
+              {% if coverImage %}
+                <img class="cover-image" src="{{ coverImage | url }}" alt="" />
+              {% endif %}
+            </header>
+          {% endif %}
+
+          <div class="doc-content">
+            {{ content | safe }}
+          </div>
+        </article>
+      </main>
+
+      <aside class="page-meta" aria-label="Page metadata">
+        {% if toc %}
+          <div class="meta-panel">
+            <p class="sidebar-label">On this page</p>
+            {% for entry in toc %}
+              <a href="#{{ entry.id }}">{{ entry.label }}</a>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% if bestFor %}
+          <div class="meta-panel">
+            <p class="sidebar-label">Best for</p>
+            <ul class="meta-list">
+              {% for entry in bestFor %}
+                <li>{{ entry }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+
+        {% if relatedLinks %}
+          <div class="meta-panel">
+            <p class="sidebar-label">Related links</p>
+            {% for entry in relatedLinks %}
+              <a href="{{ entry.url | url }}">{{ entry.label }}</a>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </aside>
+    </div>
+  </body>
+</html>
