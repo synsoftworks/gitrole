@@ -9,7 +9,6 @@ import type {
   CurrentRoleResult,
   DoctorResult,
   ListRolesResult,
-  NonMergeCommit,
   RemoteUseResult,
   StatusResult,
   UseRoleResult
@@ -19,20 +18,17 @@ import type { Role } from '../domain/role.js';
 export function renderSavedRole(role: Role): string {
   const lines = [
     `${chalk.green('saved')} ${chalk.bold(role.name)}`,
-    formatDetail('name', role.fullName),
-    formatDetail('email', role.email)
+    formatDetail('commit', formatIdentityPair(role))
   ];
 
   if (role.sshKeyPath) {
     lines.push(formatDetail('ssh', formatPath(role.sshKeyPath)));
   }
 
-  if (role.githubUser) {
-    lines.push(formatDetail('gh', role.githubUser));
-  }
+  const pushAuth = formatPushAuth(role.githubUser, role.githubHost);
 
-  if (role.githubHost) {
-    lines.push(formatDetail('host', role.githubHost));
+  if (pushAuth) {
+    lines.push(formatDetail('push', pushAuth));
   }
 
   return lines.join('\n');
@@ -42,8 +38,7 @@ export function renderUsedRole(result: UseRoleResult): string {
   const lines = [
     `${chalk.green('switched to')} ${chalk.bold(result.role.name)}`,
     formatDetail('scope', result.scope),
-    formatDetail('name', result.role.fullName),
-    formatDetail('email', result.role.email)
+    formatDetail('commit', formatIdentityPair(result.role))
   ];
 
   if (result.ssh) {
@@ -51,12 +46,10 @@ export function renderUsedRole(result: UseRoleResult): string {
     lines.push(formatDetail('ssh', `${formatPath(result.ssh.path)}${status}`));
   }
 
-  if (result.role.githubUser) {
-    lines.push(formatDetail('gh', result.role.githubUser));
-  }
+  const pushAuth = formatPushAuth(result.role.githubUser, result.role.githubHost);
 
-  if (result.role.githubHost) {
-    lines.push(formatDetail('host', result.role.githubHost));
+  if (pushAuth) {
+    lines.push(formatDetail('push', pushAuth));
   }
 
   return lines.join('\n');
@@ -66,20 +59,17 @@ export function renderCurrentRole(result: CurrentRoleResult): string {
   if (result.role) {
     const lines = [
       `${chalk.green('current role')} ${chalk.bold(result.role.name)}`,
-      formatDetail('name', result.role.fullName),
-      formatDetail('email', result.role.email)
+      formatDetail('commit', formatIdentityPair(result.role))
     ];
 
     if (result.role.sshKeyPath) {
       lines.push(formatDetail('ssh', formatPath(result.role.sshKeyPath)));
     }
 
-    if (result.role.githubUser) {
-      lines.push(formatDetail('gh', result.role.githubUser));
-    }
+    const pushAuth = formatPushAuth(result.role.githubUser, result.role.githubHost);
 
-    if (result.role.githubHost) {
-      lines.push(formatDetail('host', result.role.githubHost));
+    if (pushAuth) {
+      lines.push(formatDetail('push', pushAuth));
     }
 
     return lines.join('\n');
@@ -87,8 +77,7 @@ export function renderCurrentRole(result: CurrentRoleResult): string {
 
   return [
     chalk.yellow('no matching role'),
-    formatDetail('name', result.identity.fullName ?? chalk.dim('not set')),
-    formatDetail('email', result.identity.email ?? chalk.dim('not set'))
+    formatDetail('commit', formatIdentityPair(result.identity))
   ].join('\n');
 }
 
@@ -141,21 +130,27 @@ export function renderRemoteUse(result: RemoteUseResult): string {
 export function renderStatus(result: StatusResult): string {
   const summary =
     result.overall === 'aligned' ? chalk.green(result.overall) : chalk.yellow(result.overall);
-  const scopeLabel = formatStatusScope(result);
   const roleLabel =
     result.roleName === 'no-role' ? chalk.yellow('no matching role') : chalk.bold(result.roleName);
 
-  const lines = [[
-    roleLabel,
-    result.commitIdentity ?? chalk.dim('commit identity unset'),
-    chalk.dim(scopeLabel),
-    summary
-  ].join('  ')];
+  const lines = [`${roleLabel}  ${summary}`];
 
-  lines.push(`last non-merge commit  ${formatLastNonMergeCommit(result.lastNonMergeCommit)}`);
+  lines.push(formatDetail('commit', result.commitIdentity ?? chalk.dim('unset')));
+
+  if (result.pushAuth) {
+    lines.push(formatDetail('push', result.pushAuth));
+  }
+
+  lines.push(formatDetail('scope', formatStatusScope(result)));
+
+  if (result.historyNote) {
+    lines.push(formatDetail('history', result.historyNote));
+  } else if (!result.lastNonMergeCommit) {
+    lines.push(formatDetail('history', 'no non-merge commits yet'));
+  }
 
   if (result.repoPolicy) {
-    lines.push(`repo policy  ${formatRepoPolicyStatus(result.repoPolicy)}`);
+    lines.push(formatDetail('policy', formatRepoPolicyStatus(result.repoPolicy)));
   }
 
   return lines.join('\n');
@@ -179,8 +174,7 @@ export function renderDoctor(result: DoctorResult, title = 'doctor'): string {
     formatDetail('role', result.role?.name ?? chalk.yellow('no matching role')),
     formatDetail('scope', result.scope.effective),
     formatDetail('local', result.scope.hasLocalOverride ? 'active' : 'inactive'),
-    formatDetail('name', formatDiagnosedValue(result.commitIdentity.fullName)),
-    formatDetail('email', formatDiagnosedValue(result.commitIdentity.email))
+    formatDetail('commit', formatDiagnosedIdentity(result.commitIdentity))
   ];
 
   const globalIdentity = formatIdentityPair(result.configuredIdentity.global);
@@ -189,12 +183,10 @@ export function renderDoctor(result: DoctorResult, title = 'doctor'): string {
     lines.push(formatDetail('global', globalIdentity));
   }
 
-  if (result.role?.githubUser) {
-    lines.push(formatDetail('gh', result.role.githubUser));
-  }
+  const expectedPushAuth = formatPushAuth(result.role?.githubUser, result.role?.githubHost);
 
-  if (result.role?.githubHost) {
-    lines.push(formatDetail('host', result.role.githubHost));
+  if (expectedPushAuth) {
+    lines.push(formatDetail('push', expectedPushAuth));
   }
 
   if (result.repository.isInsideWorkTree) {
@@ -293,6 +285,10 @@ function formatDiagnosedValue(input: {
   return `${input.value} ${chalk.dim(`(${input.source})`)}`;
 }
 
+function formatDiagnosedIdentity(identity: DoctorResult['commitIdentity']): string {
+  return `${formatDiagnosedValue(identity.fullName)} <${formatDiagnosedValue(identity.email)}>`;
+}
+
 function formatStatusScope(result: StatusResult): string {
   if (result.localOverride && result.scope === 'local') {
     return 'local override';
@@ -326,12 +322,20 @@ function formatIdentityPair(identity: { fullName?: string; email?: string }): st
   return `${fullName} <${email}>`;
 }
 
-function formatLastNonMergeCommit(commit?: NonMergeCommit): string {
-  if (!commit) {
-    return 'none';
+function formatPushAuth(githubUser?: string, githubHost?: string): string | undefined {
+  if (githubUser && githubHost) {
+    return `${githubUser} via ${githubHost}`;
   }
 
-  return `${commit.authorName} <${commit.authorEmail}> — ${commit.subject}`;
+  if (githubUser) {
+    return githubUser;
+  }
+
+  if (githubHost) {
+    return githubHost;
+  }
+
+  return undefined;
 }
 
 function formatRepoPolicyStatus(repoPolicy: NonNullable<StatusResult['repoPolicy']>): string {

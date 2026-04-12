@@ -240,7 +240,7 @@ test('e2e shared org repo stays aligned when the effective role is allowed but n
 
   const statusResult = runCli(workspace, ['status']);
   mustSucceed(statusResult, 'gitrole status failed for shared org repo');
-  assert.match(statusResult.stdout, /repo policy\s+allowed role saraeloop \(default: synsoftworksdev\)/);
+  assert.match(statusResult.stdout, /policy\s+allowed role saraeloop \(default: synsoftworksdev\)/);
   assert.doesNotMatch(statusResult.stdout, /\bwarning\b/);
 
   const statusShortResult = runCli(workspace, ['status', '--short']);

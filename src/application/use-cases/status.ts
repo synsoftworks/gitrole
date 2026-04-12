@@ -22,10 +22,12 @@ export async function getStatus(
   return {
     roleName: doctorResult.role?.name ?? 'no-role',
     commitIdentity,
+    pushAuth: formatPushAuth(doctorResult),
     scope: doctorResult.scope.effective,
     localOverride: doctorResult.scope.hasLocalOverride,
     lastNonMergeCommit,
-    overall: getStatusOverall(doctorResult, lastNonMergeCommit),
+    historyNote: formatHistoryNote(doctorResult, lastNonMergeCommit),
+    overall: doctorResult.overall === 'warning' ? 'warning' : 'aligned',
     commit: getCheckGroupStatus(doctorResult.checks, ['role', 'commit', 'identity', 'fix', 'scope']),
     remote: getRemoteStatus(doctorResult),
     auth: getAuthStatus(doctorResult),
@@ -54,6 +56,30 @@ function formatCommitIdentity(identity: DoctorResult['commitIdentity']): string 
   }
 
   return `${identity.fullName.value} <${identity.email.value}>`;
+}
+
+function formatPushAuth(result: DoctorResult): string | undefined {
+  if (result.sshAuth?.githubUser) {
+    return `${result.sshAuth.githubUser} via ${result.sshAuth.host}`;
+  }
+
+  if (result.repository.remote?.protocol === 'https') {
+    return 'unverified (origin uses HTTPS)';
+  }
+
+  if (result.role?.githubUser && result.role?.githubHost) {
+    return `${result.role.githubUser} via ${result.role.githubHost}`;
+  }
+
+  if (result.role?.githubUser) {
+    return result.role.githubUser;
+  }
+
+  if (result.role?.githubHost) {
+    return result.role.githubHost;
+  }
+
+  return undefined;
 }
 
 function getCheckGroupStatus(
@@ -99,33 +125,23 @@ function getAuthStatus(result: DoctorResult): 'ok' | 'warn' | 'na' {
     : 'ok';
 }
 
-function getStatusOverall(
+function formatHistoryNote(
   doctorResult: DoctorResult,
   lastNonMergeCommit?: NonMergeCommit
-): 'aligned' | 'warning' {
-  if (doctorResult.overall === 'warning') {
-    return 'warning';
-  }
-
-  if (isLastNonMergeCommitMismatch(doctorResult, lastNonMergeCommit)) {
-    return 'warning';
-  }
-
-  return 'aligned';
-}
-
-function isLastNonMergeCommitMismatch(
-  doctorResult: DoctorResult,
-  lastNonMergeCommit?: NonMergeCommit
-): boolean {
+): string | undefined {
   const effectiveIdentity = formatCommitIdentity(doctorResult.commitIdentity);
 
   if (!effectiveIdentity || !lastNonMergeCommit) {
-    return false;
+    return undefined;
   }
 
-  return (
+  const isMismatch =
     doctorResult.commitIdentity.fullName.value !== lastNonMergeCommit.authorName ||
-    doctorResult.commitIdentity.email.value !== lastNonMergeCommit.authorEmail
-  );
+    doctorResult.commitIdentity.email.value !== lastNonMergeCommit.authorEmail;
+
+  if (!isMismatch) {
+    return undefined;
+  }
+
+  return `last non-merge commit used ${lastNonMergeCommit.authorName} <${lastNonMergeCommit.authorEmail}>`;
 }

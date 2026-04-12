@@ -663,6 +663,7 @@ test('doctor aligns commit identity, remote metadata, and SSH auth', async () =>
   const status = await getStatus(dependencies);
   assert.equal(status.roleName, 'work');
   assert.equal(status.commitIdentity, 'Sara Loera <sara@synthesissoftworks.com>');
+  assert.equal(status.pushAuth, 'synsoftworksdev via github.com-synsoftworksdev');
   assert.equal(status.scope, 'global');
   assert.equal(status.localOverride, false);
   assert.deepEqual(status.lastNonMergeCommit, {
@@ -671,6 +672,7 @@ test('doctor aligns commit identity, remote metadata, and SSH auth', async () =>
     authorEmail: 'sara@synthesissoftworks.com',
     subject: 'feat: align identity'
   });
+  assert.equal(status.historyNote, undefined);
   assert.equal(status.overall, 'aligned');
   assert.equal(status.commit, 'ok');
   assert.equal(status.remote, 'ok');
@@ -789,6 +791,7 @@ test('doctor reports local scope when repo-local identity overrides are active',
   assert.equal(status.scope, 'local');
   assert.equal(status.localOverride, true);
   assert.equal(status.lastNonMergeCommit?.authorName, 'Alex Developer');
+  assert.equal(status.historyNote, undefined);
   assert.equal(status.overall, 'aligned');
 });
 
@@ -893,6 +896,44 @@ test('doctor stays aligned for org remotes when auth and host match the role', a
   assert.equal(result.checks.some((check) => check.label === 'owner'), false);
   assert.equal(result.checks.some((check) => check.status === 'warn'), false);
   assert.equal(status.overall, 'aligned');
+});
+
+test('status stays aligned when current identity is correct but the last commit used an older identity', async () => {
+  const role: Role = {
+    name: 'synsoftworksdev',
+    fullName: 'synsoftworks',
+    email: 'synthesissoftworks@gmail.com',
+    githubUser: 'synsoftworksdev',
+    githubHost: 'github.com-synsoftworksdev'
+  };
+
+  const status = await getStatus(
+    createDoctorDependencies(role, {
+      localIdentity: {
+        fullName: role.fullName,
+        email: role.email
+      },
+      latestCommit: {
+        sha: 'abc123',
+        authorName: 'synsoftworks',
+        authorEmail: 'sara@synthesissoftworks.com',
+        subject: 'docs: previous account commit'
+      },
+      sshAuth: {
+        ok: true,
+        host: 'github.com-synsoftworksdev',
+        githubUser: 'synsoftworksdev'
+      }
+    })
+  );
+
+  assert.equal(status.overall, 'aligned');
+  assert.equal(status.commit, 'ok');
+  assert.equal(status.auth, 'ok');
+  assert.equal(
+    status.historyNote,
+    'last non-merge commit used synsoftworks <sara@synthesissoftworks.com>'
+  );
 });
 
 test('status stays aligned when the effective role matches repo defaultRole', async () => {
@@ -1348,6 +1389,7 @@ test('doctor adds a fix hint when no saved role matches the active commit identi
   assert.equal(status.scope, 'global');
   assert.equal(status.localOverride, false);
   assert.equal(status.lastNonMergeCommit?.authorName, 'Pat Person');
+  assert.equal(status.historyNote, undefined);
   assert.equal(status.overall, 'warning');
   assert.equal(status.commit, 'warn');
   assert.equal(status.remote, 'ok');
