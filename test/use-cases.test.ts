@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 
 import {
   doctor,
@@ -67,6 +70,108 @@ function createDependencies(role: Role): {
       }
     },
     calls
+  };
+}
+
+function createDoctorDependencies(role: Role, options: {
+  topLevelPath?: string;
+  remoteUrl?: string;
+  globalIdentity?: { fullName?: string; email?: string };
+  localIdentity?: { fullName?: string; email?: string };
+  latestCommit?: {
+    sha: string;
+    authorName: string;
+    authorEmail: string;
+    subject: string;
+  };
+  sshAuth?: { ok: boolean; host: string; githubUser?: string; message?: string };
+} = {}): DoctorDependencies {
+  return {
+    roleStore: {
+      async list() {
+        return [role];
+      },
+      async get() {
+        return role;
+      },
+      async save() {
+        return undefined;
+      },
+      async remove() {
+        return true;
+      }
+    },
+    gitConfig: {
+      async getGlobalUserName() {
+        return options.globalIdentity?.fullName ?? role.fullName;
+      },
+      async getGlobalUserEmail() {
+        return options.globalIdentity?.email ?? role.email;
+      },
+      async setGlobalUserName() {
+        return undefined;
+      },
+      async setGlobalUserEmail() {
+        return undefined;
+      }
+    },
+    repository: {
+      async isInsideWorkTree() {
+        return true;
+      },
+      async hasCommits() {
+        return true;
+      },
+      async getLatestNonMergeCommit() {
+        return options.latestCommit ?? {
+          sha: 'abc123',
+          authorName: options.localIdentity?.fullName ?? role.fullName,
+          authorEmail: options.localIdentity?.email ?? role.email,
+          subject: 'feat: aligned repo policy'
+        };
+      },
+      async getTopLevelPath() {
+        return options.topLevelPath ?? '/tmp/gitrole';
+      },
+      async getCurrentBranch() {
+        return 'main';
+      },
+      async getUpstreamBranch() {
+        return 'origin/main';
+      },
+      async getOriginUrl() {
+        return options.remoteUrl ?? 'git@github.com-synsoftworksdev:synsoftworksdev/gitrole.git';
+      },
+      async getOriginRemote() {
+        return getOriginRemote(
+          options.remoteUrl ?? 'git@github.com-synsoftworksdev:synsoftworksdev/gitrole.git'
+        );
+      },
+      async setOriginUrl() {
+        return undefined;
+      },
+      async getLocalUserName() {
+        return options.localIdentity?.fullName;
+      },
+      async getLocalUserEmail() {
+        return options.localIdentity?.email;
+      },
+      async setLocalUserName() {
+        return undefined;
+      },
+      async setLocalUserEmail() {
+        return undefined;
+      }
+    },
+    sshAuthProbe: {
+      async probeGithubUser() {
+        return options.sshAuth ?? {
+          ok: true,
+          host: role.githubHost ?? 'github.com-synsoftworksdev',
+          githubUser: role.githubUser
+        };
+      }
+    }
   };
 }
 
@@ -785,6 +890,160 @@ test('doctor stays aligned for org remotes when auth and host match the role', a
   assert.equal(result.checks.some((check) => check.label === 'owner'), false);
   assert.equal(result.checks.some((check) => check.status === 'warn'), false);
   assert.equal(status.overall, 'aligned');
+});
+
+test('status stays aligned when the effective role matches repo defaultRole', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-policy-default-'));
+  const role: Role = {
+    name: 'synsoftworksdev',
+    fullName: 'Synthesis Softworks',
+    email: 'dev@synthesissoftworks.com',
+    githubUser: 'synsoftworksdev',
+    githubHost: 'github.com-synsoftworksdev'
+  };
+
+  await writeFile(
+    path.join(tempDir, '.gitrole'),
+    JSON.stringify(
+      {
+        version: 1,
+        defaultRole: 'synsoftworksdev',
+        allowedRoles: ['synsoftworksdev', 'saraeloop']
+      },
+      null,
+      2
+    ),
+    'utf8'
+  );
+
+  const result = await doctor(
+    createDoctorDependencies(role, {
+      topLevelPath: tempDir
+    })
+  );
+  const status = await getStatus(
+    createDoctorDependencies(role, {
+      topLevelPath: tempDir
+    })
+  );
+
+  assert.equal(result.repoPolicy?.status, 'default');
+  assert.equal(
+    result.checks.some(
+      (check) =>
+        check.label === 'policy' &&
+        check.status === 'ok' &&
+        check.message.includes('matches repo defaultRole')
+    ),
+    true
+  );
+  assert.equal(result.overall, 'aligned');
+  assert.equal(status.repoPolicy?.status, 'default');
+  assert.equal(status.overall, 'aligned');
+});
+
+test('status stays aligned when the effective role is allowed but not default', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-policy-allowed-'));
+  const role: Role = {
+    name: 'saraeloop',
+    fullName: 'Sara Loera',
+    email: 'saraeloop@gmail.com',
+    githubUser: 'saraeloop',
+    githubHost: 'github.com-saraeloop'
+  };
+
+  await writeFile(
+    path.join(tempDir, '.gitrole'),
+    JSON.stringify(
+      {
+        version: 1,
+        defaultRole: 'synsoftworksdev',
+        allowedRoles: ['synsoftworksdev', 'saraeloop']
+      },
+      null,
+      2
+    ),
+    'utf8'
+  );
+
+  const result = await doctor(
+    createDoctorDependencies(role, {
+      topLevelPath: tempDir,
+      remoteUrl: 'git@github.com-saraeloop:open-source-org/gitrole.git'
+    })
+  );
+  const status = await getStatus(
+    createDoctorDependencies(role, {
+      topLevelPath: tempDir,
+      remoteUrl: 'git@github.com-saraeloop:open-source-org/gitrole.git'
+    })
+  );
+
+  assert.equal(result.repoPolicy?.status, 'allowed');
+  assert.equal(
+    result.checks.some(
+      (check) =>
+        check.label === 'policy' &&
+        check.status === 'info' &&
+        check.message.includes('allowed here, but repo defaultRole is synsoftworksdev')
+    ),
+    true
+  );
+  assert.equal(result.overall, 'aligned');
+  assert.equal(status.repoPolicy?.status, 'allowed');
+  assert.equal(status.overall, 'aligned');
+});
+
+test('status warns when the effective role is not allowed by repo policy', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-policy-warn-'));
+  const role: Role = {
+    name: 'client-acme',
+    fullName: 'Sara Loera',
+    email: 'sara@client.example',
+    githubUser: 'client-acme-dev',
+    githubHost: 'github.com-client-acme'
+  };
+
+  await writeFile(
+    path.join(tempDir, '.gitrole'),
+    JSON.stringify(
+      {
+        version: 1,
+        defaultRole: 'synsoftworksdev',
+        allowedRoles: ['synsoftworksdev', 'saraeloop']
+      },
+      null,
+      2
+    ),
+    'utf8'
+  );
+
+  const result = await doctor(
+    createDoctorDependencies(role, {
+      topLevelPath: tempDir,
+      remoteUrl: 'git@github.com-client-acme:acme-platform/client-portal.git'
+    })
+  );
+  const status = await getStatus(
+    createDoctorDependencies(role, {
+      topLevelPath: tempDir,
+      remoteUrl: 'git@github.com-client-acme:acme-platform/client-portal.git'
+    })
+  );
+
+  assert.equal(result.repoPolicy?.status, 'notAllowed');
+  assert.equal(
+    result.checks.some(
+      (check) =>
+        check.label === 'policy' &&
+        check.status === 'warn' &&
+        check.message.includes('client-acme is not allowed here')
+    ),
+    true
+  );
+  assert.equal(result.overall, 'warning');
+  assert.equal(status.repoPolicy?.status, 'notAllowed');
+  assert.equal(status.overall, 'warning');
 });
 
 test('doctor warns when HTTPS remotes prevent SSH auth verification', async () => {

@@ -41,6 +41,7 @@ gitrole doctor
 | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | `gitrole add <name> --name "..." --email "..." [--ssh ...] [--github-user ...] [--github-host ...]` | Create or update a saved role profile                          |
 | `gitrole use <name> [--global \| --local]`                                                          | Switch git identity at global or repository-local scope and optionally load SSH key |
+| `gitrole resolve`                                                                                   | Print the repo-local default role from `.gitrole`               |
 | `gitrole current`                                                                                   | Show which saved role matches the active commit identity       |
 | `gitrole list`                                                                                      | List all saved roles and mark the active one                   |
 | `gitrole status`                                                                                    | Quick human-readable repo and alignment check                  |
@@ -141,6 +142,42 @@ work  Alex Developer <alex@work.example>  local override  aligned
 ```text
 role=work scope=local override=true commit=ok remote=ok auth=ok overall=aligned
 ```
+
+## Repo-Local Policy
+
+If a repository has a root-level `.gitrole` file, `gitrole` can also describe
+which roles belong there.
+
+Example:
+
+```json
+{
+  "version": 1,
+  "defaultRole": "synsoftworksdev",
+  "allowedRoles": ["synsoftworksdev", "saraeloop"]
+}
+```
+
+What each field means:
+
+- `defaultRole` is the preferred saved role for that repository
+- `allowedRoles` is the set of saved roles that are still valid there
+
+Use `gitrole resolve` when you want the repo's preferred role:
+
+```bash
+gitrole resolve
+```
+
+`gitrole status` and `gitrole doctor` also become policy-aware when `.gitrole`
+is present:
+
+- default role matched: `ok`
+- allowed but not default: `info`
+- not allowed: `warn`
+
+This is repo-local identity policy only. It does not auto-switch roles, install
+hooks, or enforce commits.
 
 ## Automation and Agents
 

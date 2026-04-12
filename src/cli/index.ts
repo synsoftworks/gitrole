@@ -18,11 +18,17 @@ import {
   ProfileNotFoundError,
   removeRole,
   RoleMissingGithubHostError,
+  resolveRepoPolicy,
   UnsupportedRemoteRewriteError,
   useRemoteForRole,
   useRole
 } from '../application/use-cases/index.js';
 import type { AppDependencies, DoctorDependencies } from '../application/contracts.js';
+import {
+  InvalidRepoPolicyError,
+  RepoPolicyNotFoundError,
+  RepoPolicyRepositoryContextError
+} from '../application/repo-policy.js';
 import { SystemGitConfig } from '../adapters/git-config.js';
 import { SystemGitRepository } from '../adapters/git-repository.js';
 import { FileRoleStore } from '../adapters/role-store.js';
@@ -107,6 +113,7 @@ Examples:
   $ gitrole add work --name "Alex Developer" --email "alex@work.example"
   $ gitrole use work
   $ gitrole use work --local
+  $ gitrole resolve
   $ gitrole current
   $ gitrole status
   $ gitrole doctor
@@ -194,6 +201,28 @@ Examples:
       if (result.alignment?.checks.some((check) => check.status === 'warn')) {
         io.stdout(renderRepoNote());
       }
+    });
+
+  program
+    .command('resolve')
+    .description('print the repo-local default role from .gitrole')
+    .addHelpText(
+      'after',
+      `
+
+Repo policy:
+  Reads the repository-local ${'.gitrole'} file and prints the configured defaultRole.
+  This is identity policy only. It does not switch roles or enforce hooks.
+
+Example:
+  $ gitrole resolve
+`
+    )
+    .action(async () => {
+      const repoPolicy = await resolveRepoPolicy({
+        repository: dependencies.repository
+      });
+      io.stdout(repoPolicy.defaultRole);
     });
 
   program
@@ -364,6 +393,9 @@ function formatError(error: unknown): string {
     error instanceof ProfileNotFoundError ||
     error instanceof GitNotInstalledError ||
     error instanceof NotInGitRepositoryError ||
+    error instanceof RepoPolicyRepositoryContextError ||
+    error instanceof RepoPolicyNotFoundError ||
+    error instanceof InvalidRepoPolicyError ||
     error instanceof RoleMissingGithubHostError ||
     error instanceof OriginRemoteNotConfiguredError ||
     error instanceof UnsupportedRemoteRewriteError

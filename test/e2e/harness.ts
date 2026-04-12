@@ -218,6 +218,29 @@ export function parseJsonOutput<T>(result: SpawnResult, context: string): T {
   return JSON.parse(result.stdout) as T;
 }
 
+export async function writeRepoPolicy(
+  workspace: HermeticWorkspace,
+  policy: {
+    version?: 1;
+    defaultRole: string;
+    allowedRoles: string[];
+  }
+): Promise<void> {
+  await writeFile(
+    path.join(workspace.repoDir, '.gitrole'),
+    JSON.stringify(
+      {
+        version: policy.version ?? 1,
+        defaultRole: policy.defaultRole,
+        allowedRoles: policy.allowedRoles
+      },
+      null,
+      2
+    ),
+    'utf8'
+  );
+}
+
 export function getLocalConfigValue(workspace: HermeticWorkspace, key: string): string {
   const result = runGit(workspace, ['config', '--local', '--get', key]);
   mustSucceed(result, `failed to read local Git config for ${key}`);

@@ -151,6 +151,10 @@ export function renderStatus(result: StatusResult): string {
 
   lines.push(`last non-merge commit  ${formatLastNonMergeCommit(result.lastNonMergeCommit)}`);
 
+  if (result.repoPolicy) {
+    lines.push(`repo policy  ${formatRepoPolicyStatus(result.repoPolicy)}`);
+  }
+
   return lines.join('\n');
 }
 
@@ -231,6 +235,12 @@ export function renderDoctor(result: DoctorResult, title = 'doctor'): string {
     lines.push(formatDetail('auth', `${result.sshAuth.githubUser} via ${result.sshAuth.host}`));
   } else if (result.sshAuth?.message) {
     lines.push(formatDetail('auth', chalk.yellow(result.sshAuth.message)));
+  }
+
+  if (result.repoPolicy) {
+    lines.push(formatDetail('policy', `.gitrole (v${result.repoPolicy.version})`));
+    lines.push(formatDetail('default', result.repoPolicy.defaultRole));
+    lines.push(formatDetail('allowed', result.repoPolicy.allowedRoles.join(', ')));
   }
 
   lines.push('');
@@ -319,4 +329,18 @@ function formatLastNonMergeCommit(commit?: NonMergeCommit): string {
   }
 
   return `${commit.authorName} <${commit.authorEmail}> — ${commit.subject}`;
+}
+
+function formatRepoPolicyStatus(repoPolicy: NonNullable<StatusResult['repoPolicy']>): string {
+  if (repoPolicy.status === 'default') {
+    return `default role ${repoPolicy.defaultRole}`;
+  }
+
+  if (repoPolicy.status === 'allowed') {
+    return `allowed role ${repoPolicy.effectiveRole} (default: ${repoPolicy.defaultRole})`;
+  }
+
+  return repoPolicy.effectiveRole
+    ? `role ${repoPolicy.effectiveRole} is not allowed here (default: ${repoPolicy.defaultRole})`
+    : `current identity does not match an allowed role here (default: ${repoPolicy.defaultRole})`;
 }

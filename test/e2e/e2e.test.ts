@@ -9,10 +9,12 @@ import {
   getOriginUrl,
   initRepo,
   mustSucceed,
+  parseJsonOutput,
   runCli,
   saveRole,
   setGlobalIdentity,
-  setOrigin
+  setOrigin,
+  writeRepoPolicy
 } from './harness.js';
 
 test('e2e status --short is exact for an aligned local override on an org remote', async () => {
@@ -202,5 +204,79 @@ test('e2e remote set preserves owner and repository while rewriting the host ali
   assert.equal(
     getOriginUrl(workspace),
     'git@github.com-acme-dev:acme-corp/service.git'
+  );
+});
+
+test('e2e shared org repo stays aligned when the effective role is allowed but not default', async () => {
+  const workspace = await createHermeticWorkspace({
+    sshUsersByHost: {
+      'github.com-saraeloop': 'saraeloop'
+    }
+  });
+
+  await initRepo(workspace);
+  setGlobalIdentity(workspace, {
+    name: 'Sara Loera',
+    email: 'saraeloop@gmail.com'
+  });
+  await saveRole(workspace, {
+    name: 'saraeloop',
+    fullName: 'Sara Loera',
+    email: 'saraeloop@gmail.com',
+    githubUser: 'saraeloop',
+    githubHost: 'github.com-saraeloop'
+  });
+  commitEmpty(workspace, {
+    message: 'docs: shared repo policy check'
+  });
+  setOrigin(workspace, 'git@github.com-saraeloop:open-source-org/gitrole.git');
+  await writeRepoPolicy(workspace, {
+    defaultRole: 'synsoftworksdev',
+    allowedRoles: ['synsoftworksdev', 'saraeloop']
+  });
+
+  const statusResult = runCli(workspace, ['status']);
+  mustSucceed(statusResult, 'gitrole status failed for shared org repo');
+  assert.match(statusResult.stdout, /repo policy\s+allowed role saraeloop \(default: synsoftworksdev\)/);
+  assert.doesNotMatch(statusResult.stdout, /\bwarning\b/);
+
+  const statusShortResult = runCli(workspace, ['status', '--short']);
+  mustSucceed(statusShortResult, 'gitrole status --short failed for shared org repo');
+  assert.equal(
+    statusShortResult.stdout.trim(),
+    'role=saraeloop scope=global override=false commit=ok remote=ok auth=ok overall=aligned'
+  );
+
+  const doctorResult = runCli(workspace, ['doctor']);
+  mustSucceed(doctorResult, 'gitrole doctor failed for shared org repo');
+  assert.match(doctorResult.stdout, /policy\s+\.gitrole \(v1\)/);
+  assert.match(doctorResult.stdout, /default\s+synsoftworksdev/);
+  assert.match(doctorResult.stdout, /allowed\s+synsoftworksdev, saraeloop/);
+  assert.match(doctorResult.stdout, /\n\s*info policy\s+effective role saraeloop is allowed here, but repo defaultRole is synsoftworksdev/);
+  assert.doesNotMatch(doctorResult.stdout, /\n\s*warn policy\s+/);
+
+  const doctorJson = parseJsonOutput<{
+    overall: string;
+    repoPolicy?: {
+      version: number;
+      defaultRole: string;
+      allowedRoles: string[];
+      effectiveRole?: string;
+      status: string;
+    };
+    checks: Array<{ label: string; status: string }>;
+  }>(runCli(workspace, ['doctor', '--json']), 'gitrole doctor --json failed for shared org repo');
+
+  assert.equal(doctorJson.overall, 'aligned');
+  assert.deepEqual(doctorJson.repoPolicy, {
+    version: 1,
+    defaultRole: 'synsoftworksdev',
+    allowedRoles: ['synsoftworksdev', 'saraeloop'],
+    effectiveRole: 'saraeloop',
+    status: 'allowed'
+  });
+  assert.equal(
+    doctorJson.checks.some((check) => check.label === 'policy' && check.status === 'info'),
+    true
   );
 });

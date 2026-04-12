@@ -108,9 +108,11 @@ Then create your first role and run the three-command example above.
 
 <h2 id="command-surface">Command quick reference</h2>
 
-The current `0.3.0` command surface is small:
+The current command surface is small:
 
 <dl class="command-list">
+  <dt><code>gitrole resolve</code></dt>
+  <dd>Print the repo-local default role from <code>.gitrole</code>.</dd>
   <dt><code>gitrole use &lt;name&gt; [--global | --local]</code></dt>
   <dd>Apply a saved role globally or to the current repository.</dd>
   <dt><code>gitrole current</code></dt>
@@ -139,6 +141,13 @@ Use the guide when you want the standard setup. Use a use case when you already 
     </div>
     <span aria-hidden="true">&rarr;</span>
   </a>
+  <a class="reference-card" href="{{ '/guides/use-repo-local-identity-policy-with-gitrole/' | url }}">
+    <div>
+      <strong>Guide: Use repo-local identity policy with .gitrole</strong>
+      <span>Declare the preferred role for a repo and the short list of roles that are still valid there.</span>
+    </div>
+    <span aria-hidden="true">&rarr;</span>
+  </a>
   <a class="reference-card" href="{{ '/use-cases/fix-pushes-using-the-wrong-github-account/' | url }}">
     <div>
       <strong>Use case: Fix pushes using the wrong GitHub account</strong>
@@ -161,3 +170,25 @@ Use the guide when you want the standard setup. Use a use case when you already 
     <span aria-hidden="true">&rarr;</span>
   </a>
 </div>
+
+<h2 id="repo-policy">Repo-local identity policy</h2>
+
+If a repository has a root-level <code>.gitrole</code> file, <code>gitrole</code> can
+tell you which role is preferred there and which roles are still allowed.
+
+```json
+{
+  "version": 1,
+  "defaultRole": "synsoftworksdev",
+  "allowedRoles": ["synsoftworksdev", "saraeloop"]
+}
+```
+
+Use <code>gitrole resolve</code> when you want the repo's preferred role:
+
+```bash
+gitrole resolve
+```
+
+This is repo-local identity policy, not full workflow management. It does not
+auto-switch roles, install hooks, or block commits.

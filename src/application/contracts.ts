@@ -47,12 +47,24 @@ export interface DoctorCheck {
 }
 
 export type OverallStatus = 'aligned' | 'warning' | 'error';
+export type RepoPolicyStatus = 'default' | 'allowed' | 'notAllowed';
 
 export interface NonMergeCommit {
   sha: string;
   authorName: string;
   authorEmail: string;
   subject: string;
+}
+
+export interface RepoPolicy {
+  version: 1;
+  defaultRole: string;
+  allowedRoles: string[];
+}
+
+export interface RepoPolicyEvaluation extends RepoPolicy {
+  effectiveRole?: string;
+  status: RepoPolicyStatus;
 }
 
 export interface DoctorResult {
@@ -76,6 +88,7 @@ export interface DoctorResult {
     remote?: RemoteInfo;
   };
   sshAuth?: SshAuthProbeResult;
+  repoPolicy?: RepoPolicyEvaluation;
   checks: DoctorCheck[];
 }
 
@@ -104,6 +117,7 @@ export interface StatusResult {
   commit: 'ok' | 'warn' | 'na';
   remote: 'ok' | 'warn' | 'na';
   auth: 'ok' | 'warn' | 'na';
+  repoPolicy?: RepoPolicyEvaluation;
 }
 
 export interface RoleStore {
@@ -176,6 +190,10 @@ export interface DoctorDependencies {
   gitConfig: GitConfig;
   repository: GitRepository;
   sshAuthProbe: SshAuthProbe;
+}
+
+export interface ResolveRepoPolicyDependencies {
+  repository: Pick<GitRepository, 'isInsideWorkTree' | 'getTopLevelPath'>;
 }
 
 export interface RemoteUseDependencies {
