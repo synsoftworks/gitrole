@@ -158,6 +158,10 @@ pre {
   border-top: 1px solid var(--line);
 }
 
+.sidebar-group-mobile-only {
+  display: none;
+}
+
 .sidebar-label,
 .eyebrow {
   margin: 0 0 6px;
@@ -500,6 +504,10 @@ pre code {
     background: var(--panel);
     border-radius: 0;
     box-shadow: none;
+  }
+
+  .sidebar-group-mobile-only {
+    display: block;
   }
 
   .docs-main {
