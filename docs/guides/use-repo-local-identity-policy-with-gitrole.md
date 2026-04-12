@@ -50,7 +50,7 @@ Example:
 company-main
 ```
 
-This is useful for both humans and automation because it answers one direct question: "what role belongs here by default?"
+If no <code>.gitrole</code> file exists, <code>resolve</code> fails clearly, and <code>status</code> and <code>doctor</code> behave as normal.
 
 <h2 id="how-status-and-doctor-use-policy">How status and doctor use policy</h2>
 
