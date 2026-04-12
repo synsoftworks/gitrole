@@ -1,7 +1,7 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/gitrole-white.png">
-    <img src="docs/assets/gitrole-black.png" alt="gitrole" width="80">
+    <img src="docs/assets/gitrole-black.png" alt="gitrole" width="60">
   </picture>
   <h1>gitrole</h1>
 </div>
