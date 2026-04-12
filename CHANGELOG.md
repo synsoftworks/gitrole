@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/synsoftworks/gitrole/compare/gitrole-v0.5.0...gitrole-v0.6.0) (2026-04-12)
+
+
+### Features
+
+* **repo-policy:** add pin and resolve --json ([#32](https://github.com/synsoftworks/gitrole/issues/32)) ([f3539e1](https://github.com/synsoftworks/gitrole/commit/f3539e177fa10abe2522e3fef72476bf71fc9858))
+
 ## [0.5.0](https://github.com/synsoftworks/gitrole/compare/gitrole-v0.4.1...gitrole-v0.5.0) (2026-04-12)
 
 
