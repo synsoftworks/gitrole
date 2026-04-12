@@ -1,11 +1,10 @@
-<p align="center">
+<div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/gitrole-white.png">
     <img src="docs/assets/gitrole-black.png" alt="gitrole" width="80">
   </picture>
-</p>
-
-<h1 align="center">gitrole</h1>
+  <h1>gitrole</h1>
+</div>
 
 <p align="center">
   Switch your git identity in one command.
