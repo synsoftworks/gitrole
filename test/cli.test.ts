@@ -48,7 +48,7 @@ test('cli help text includes the primary commands', () => {
 
   assert.equal(result.status, 0);
   assert.match(result.stdout, /add \[options\] <name>/);
-  assert.match(result.stdout, /current\s+show the effective identity/);
+  assert.match(result.stdout, /current\s+show which saved role matches the active commit identity/);
   assert.match(result.stdout, /doctor/);
   assert.match(result.stdout, /resolve/);
   assert.match(result.stdout, /remote/);
