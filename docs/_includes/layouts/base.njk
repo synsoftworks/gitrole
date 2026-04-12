@@ -16,7 +16,10 @@
   <body>
     <header class="site-header">
       <div class="site-header-inner">
-        <a class="brand" href="{{ '/' | url }}">{{ site.productName }}</a>
+        <a class="brand" href="{{ '/' | url }}">
+          <img class="brand-mark" src="{{ '/assets/gitrole-black.png' | url }}" alt="" />
+          <span>{{ site.productName }}</span>
+        </a>
         <div class="header-actions">
           <a class="header-link" href="{{ site.npmUrl }}">npm</a>
           <a class="header-link" href="{{ site.repositoryUrl }}">GitHub</a>

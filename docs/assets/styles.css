@@ -67,10 +67,21 @@ pre {
 }
 
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 1rem;
   font-weight: 800;
   letter-spacing: -0.03em;
   text-decoration: none;
+}
+
+.brand-mark {
+  display: block;
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex: 0 0 auto;
 }
 
 .header-actions {
