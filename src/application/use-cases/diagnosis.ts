@@ -8,6 +8,7 @@ import {
   UseRoleDependencies
 } from '../contracts.js';
 import { collectObservedState, type ObservedState } from '../observed-state.js';
+import { evaluateRepoPolicy, loadOptionalRepoPolicy } from '../repo-policy.js';
 
 /**
  * Diagnoses the active commit identity and push path for the current repository.
@@ -19,9 +20,10 @@ import { collectObservedState, type ObservedState } from '../observed-state.js';
 export async function doctor(
   dependencies: DoctorDependencies
 ): Promise<DoctorResult> {
-  const [roles, observedState] = await Promise.all([
+  const [roles, observedState, repoPolicy] = await Promise.all([
     dependencies.roleStore.list(),
-    collectObservedState(dependencies)
+    collectObservedState(dependencies),
+    loadOptionalRepoPolicy(dependencies.repository)
   ]);
   const role = roles.find((candidate) =>
     matchesIdentity(candidate, {
@@ -29,10 +31,12 @@ export async function doctor(
       email: observedState.commitIdentity.email.value
     })
   );
+  const evaluatedRepoPolicy = repoPolicy ? evaluateRepoPolicy(repoPolicy, role?.name) : undefined;
   const checks = buildDoctorChecks({
     role,
     roles,
-    observedState
+    observedState,
+    repoPolicy: evaluatedRepoPolicy
   });
 
   return {
@@ -43,6 +47,7 @@ export async function doctor(
     scope: observedState.scope,
     repository: observedState.repository,
     sshAuth: observedState.sshAuth,
+    repoPolicy: evaluatedRepoPolicy,
     checks
   };
 }
@@ -85,6 +90,7 @@ function buildDoctorChecks(input: {
   role?: Role;
   roles: Role[];
   observedState: ObservedState;
+  repoPolicy?: DoctorResult['repoPolicy'];
 }): DoctorCheck[] {
   const checks: DoctorCheck[] = [];
   const { observedState } = input;
@@ -182,6 +188,10 @@ function buildDoctorChecks(input: {
   }
 
   if (!input.role) {
+    if (input.repoPolicy) {
+      checks.push(buildRepoPolicyCheck(input.repoPolicy));
+    }
+
     return checks;
   }
 
@@ -191,6 +201,10 @@ function buildDoctorChecks(input: {
       observedState
     })
   );
+
+  if (input.repoPolicy) {
+    checks.push(buildRepoPolicyCheck(input.repoPolicy));
+  }
 
   return checks;
 }
@@ -330,4 +344,30 @@ function formatCommitIdentity(identity: DoctorResult['commitIdentity']): string 
   }
 
   return `${identity.fullName.value} <${identity.email.value}>`;
+}
+
+function buildRepoPolicyCheck(repoPolicy: NonNullable<DoctorResult['repoPolicy']>): DoctorCheck {
+  if (repoPolicy.status === 'default') {
+    return {
+      status: 'ok',
+      label: 'policy',
+      message: `effective role ${repoPolicy.defaultRole} matches repo defaultRole`
+    };
+  }
+
+  if (repoPolicy.status === 'allowed') {
+    return {
+      status: 'info',
+      label: 'policy',
+      message: `effective role ${repoPolicy.effectiveRole} is allowed here, but repo defaultRole is ${repoPolicy.defaultRole}`
+    };
+  }
+
+  return {
+    status: 'warn',
+    label: 'policy',
+    message: repoPolicy.effectiveRole
+      ? `effective role ${repoPolicy.effectiveRole} is not allowed here; allowedRoles are ${repoPolicy.allowedRoles.join(', ')}`
+      : `effective role is not allowed here; allowedRoles are ${repoPolicy.allowedRoles.join(', ')}`
+  };
 }

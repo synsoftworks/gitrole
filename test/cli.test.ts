@@ -13,6 +13,30 @@ const cliPath = fileURLToPath(new URL('../src/cli/index.js', import.meta.url));
 const packageJsonPath = fileURLToPath(new URL('../../package.json', import.meta.url));
 const readmePath = fileURLToPath(new URL('../../README.md', import.meta.url));
 
+function runGit(args: string[], cwd: string) {
+  const result = spawnSync('git', args, {
+    cwd,
+    encoding: 'utf8'
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+}
+
+async function initRealRepo(prefix: string): Promise<string> {
+  const repoDir = await mkdtemp(path.join(os.tmpdir(), prefix));
+  const initResult = spawnSync('git', ['init', '-b', 'main'], {
+    cwd: repoDir,
+    encoding: 'utf8'
+  });
+
+  if (initResult.status !== 0) {
+    runGit(['init'], repoDir);
+    runGit(['branch', '-M', 'main'], repoDir);
+  }
+
+  return repoDir;
+}
+
 test('cli help text includes the primary commands', () => {
   const result = spawnSync(process.execPath, [cliPath, '--help'], {
     encoding: 'utf8'
@@ -22,6 +46,7 @@ test('cli help text includes the primary commands', () => {
   assert.match(result.stdout, /add \[options\] <name>/);
   assert.match(result.stdout, /current\s+show the effective identity/);
   assert.match(result.stdout, /doctor/);
+  assert.match(result.stdout, /resolve/);
   assert.match(result.stdout, /remote/);
   assert.match(result.stdout, /status/);
   assert.match(result.stdout, /use \[options\] <name>/);
@@ -46,6 +71,7 @@ test('readme command surface matches the implemented CLI surface', async () => {
   const readme = await readFile(readmePath, 'utf8');
 
   assert.match(readme, /`gitrole current`/);
+  assert.match(readme, /`gitrole resolve`/);
   assert.match(readme, /`gitrole status --short`/);
   assert.match(readme, /`gitrole doctor --json`/);
   assert.match(readme, /`gitrole remote set <name>`/);
@@ -81,6 +107,17 @@ test('cli doctor and status help describe the warning policy', () => {
   assert.equal(statusHelp.status, 0);
   assert.match(statusHelp.stdout, /status warns only on actionable mismatches/i);
   assert.match(statusHelp.stdout, /Observed context alone does not degrade the overall result/i);
+});
+
+test('cli resolve help describes repo-local policy', () => {
+  const result = spawnSync(process.execPath, [cliPath, 'resolve', '--help'], {
+    encoding: 'utf8'
+  });
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /repository-local \.gitrole file/i);
+  assert.match(result.stdout, /prints the configured defaultRole/i);
+  assert.equal(result.stderr, '');
 });
 
 test('cli routes add and list commands through the configured storage', async () => {
@@ -455,6 +492,223 @@ test('cli doctor --json exits 1 on operational failure and keeps stdout empty', 
   assert.equal(result.status, 1);
   assert.equal(result.stdout, '');
   assert.match(result.stderr, /error: git is not installed or not available on PATH/);
+});
+
+test('cli resolve returns the repo default role from .gitrole', async () => {
+  const repoDir = await initRealRepo('gitrole-cli-resolve-ok-');
+
+  await writeFile(
+    path.join(repoDir, '.gitrole'),
+    JSON.stringify(
+      {
+        version: 1,
+        defaultRole: 'synsoftworksdev',
+        allowedRoles: ['synsoftworksdev', 'saraeloop']
+      },
+      null,
+      2
+    ),
+    'utf8'
+  );
+
+  const result = spawnSync(process.execPath, [cliPath, 'resolve'], {
+    cwd: repoDir,
+    encoding: 'utf8'
+  });
+
+  assert.equal(result.status, 0);
+  assert.equal(result.stdout.trim(), 'synsoftworksdev');
+  assert.equal(result.stderr, '');
+});
+
+test('cli resolve fails outside a git repository', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-cli-resolve-outside-'));
+  const result = spawnSync(process.execPath, [cliPath, 'resolve'], {
+    cwd: tempDir,
+    encoding: 'utf8'
+  });
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  assert.match(result.stderr, /error: not inside a git repository; resolve requires a repo context/);
+});
+
+test('cli resolve fails when .gitrole is missing', async () => {
+  const repoDir = await initRealRepo('gitrole-cli-resolve-missing-');
+  const result = spawnSync(process.execPath, [cliPath, 'resolve'], {
+    cwd: repoDir,
+    encoding: 'utf8'
+  });
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  assert.match(result.stderr, /error: repo policy file \.gitrole was not found in the repository root/);
+});
+
+test('cli resolve fails when .gitrole contains invalid JSON', async () => {
+  const repoDir = await initRealRepo('gitrole-cli-resolve-json-');
+
+  await writeFile(path.join(repoDir, '.gitrole'), '{bad-json', 'utf8');
+
+  const result = spawnSync(process.execPath, [cliPath, 'resolve'], {
+    cwd: repoDir,
+    encoding: 'utf8'
+  });
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  assert.match(result.stderr, /error: repo policy file \.gitrole is invalid: expected valid JSON/);
+});
+
+test('cli resolve fails when .gitrole has an invalid schema', async () => {
+  const repoDir = await initRealRepo('gitrole-cli-resolve-schema-');
+
+  await writeFile(
+    path.join(repoDir, '.gitrole'),
+    JSON.stringify(
+      {
+        version: 1,
+        defaultRole: 'synsoftworksdev',
+        allowedRoles: ['saraeloop']
+      },
+      null,
+      2
+    ),
+    'utf8'
+  );
+
+  const result = spawnSync(process.execPath, [cliPath, 'resolve'], {
+    cwd: repoDir,
+    encoding: 'utf8'
+  });
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  assert.match(result.stderr, /error: repo policy file \.gitrole is invalid: defaultRole must appear in allowedRoles/);
+});
+
+test('cli doctor --json includes repo policy state when .gitrole allows the effective role', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-cli-doctor-policy-'));
+  const configHome = path.join(tempDir, 'config');
+  const gitStubPath = path.join(tempDir, 'git-stub.mjs');
+  const sshStubPath = path.join(tempDir, 'ssh-stub.mjs');
+
+  await writeFile(
+    path.join(tempDir, '.gitrole'),
+    JSON.stringify(
+      {
+        version: 1,
+        defaultRole: 'synsoftworksdev',
+        allowedRoles: ['synsoftworksdev', 'saraeloop']
+      },
+      null,
+      2
+    ),
+    'utf8'
+  );
+  await writeFile(
+    gitStubPath,
+    `#!/usr/bin/env node
+const args = process.argv.slice(2);
+if (args[0] === 'config' && args[1] === '--global' && args[2] === '--get' && args[3] === 'user.name') {
+  process.stdout.write('Sara Loera\\n');
+  process.exit(0);
+}
+if (args[0] === 'config' && args[1] === '--global' && args[2] === '--get' && args[3] === 'user.email') {
+  process.stdout.write('saraeloop@gmail.com\\n');
+  process.exit(0);
+}
+if (args[0] === 'config' && args[1] === '--local' && args[2] === '--get') {
+  process.exit(1);
+}
+if (args[0] === 'rev-parse' && args[1] === '--is-inside-work-tree') {
+  process.stdout.write('true\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args[1] === '--verify') {
+  process.stdout.write('abcdef0\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args[1] === '--show-toplevel') {
+  process.stdout.write('${tempDir.replaceAll("'", "'\\''")}\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args.includes('@{upstream}')) {
+  process.stdout.write('origin/main\\n');
+  process.exit(0);
+}
+if (args[0] === 'branch' && args[1] === '--show-current') {
+  process.stdout.write('main\\n');
+  process.exit(0);
+}
+if (args[0] === 'log' && args[1] === '--no-merges') {
+  process.stdout.write('abc123\\u001fSara Loera\\u001fsaraeloop@gmail.com\\u001fdocs: aligned shared repo\\n');
+  process.exit(0);
+}
+if (args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'origin') {
+  process.stdout.write('git@github.com-saraeloop:open-source-org/gitrole.git\\n');
+  process.exit(0);
+}
+process.exit(1);
+`,
+    'utf8'
+  );
+  await chmod(gitStubPath, 0o755);
+  await writeFile(
+    sshStubPath,
+    `#!/usr/bin/env node
+process.stderr.write("Hi saraeloop! You've successfully authenticated, but GitHub does not provide shell access.\\n");
+process.exit(1);
+`,
+    'utf8'
+  );
+  await chmod(sshStubPath, 0o755);
+  await mkdir(path.join(configHome, 'gitrole'), { recursive: true });
+  await writeFile(
+    path.join(configHome, 'gitrole', 'roles.json'),
+    JSON.stringify(
+      {
+        roles: [
+          {
+            name: 'saraeloop',
+            fullName: 'Sara Loera',
+            email: 'saraeloop@gmail.com',
+            githubUser: 'saraeloop',
+            githubHost: 'github.com-saraeloop'
+          }
+        ]
+      },
+      null,
+      2
+    ),
+    'utf8'
+  );
+
+  const env = {
+    ...process.env,
+    HOME: tempDir,
+    XDG_CONFIG_HOME: configHome,
+    GITROLE_GIT_BIN: gitStubPath,
+    GITROLE_SSH_BIN: sshStubPath
+  };
+
+  const result = spawnSync(process.execPath, [cliPath, 'doctor', '--json'], {
+    encoding: 'utf8',
+    env
+  });
+  const parsed = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(parsed.overall, 'aligned');
+  assert.deepEqual(parsed.repoPolicy, {
+    version: 1,
+    defaultRole: 'synsoftworksdev',
+    allowedRoles: ['synsoftworksdev', 'saraeloop'],
+    effectiveRole: 'saraeloop',
+    status: 'allowed'
+  });
+  assert.equal(parsed.checks.some((check: { label: string; status: string }) => check.label === 'policy' && check.status === 'info'), true);
+  assert.equal(result.stderr, '');
 });
 
 test('cli current --verbose is removed', () => {

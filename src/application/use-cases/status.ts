@@ -25,7 +25,8 @@ export async function getStatus(
     overall: getStatusOverall(doctorResult, lastNonMergeCommit),
     commit: getCheckGroupStatus(doctorResult.checks, ['role', 'commit', 'identity', 'fix', 'scope']),
     remote: getRemoteStatus(doctorResult),
-    auth: getAuthStatus(doctorResult)
+    auth: getAuthStatus(doctorResult),
+    repoPolicy: doctorResult.repoPolicy
   };
 }
 
