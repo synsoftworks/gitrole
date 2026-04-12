@@ -16,10 +16,11 @@ const cliPath = fileURLToPath(new URL('../src/cli/index.js', import.meta.url));
 const packageJsonPath = fileURLToPath(new URL('../../package.json', import.meta.url));
 const readmePath = fileURLToPath(new URL('../../README.md', import.meta.url));
 
-function runGit(args: string[], cwd: string) {
+function runGit(args: string[], cwd: string, env?: NodeJS.ProcessEnv) {
   const result = spawnSync('git', args, {
     cwd,
-    encoding: 'utf8'
+    encoding: 'utf8',
+    env
   });
 
   assert.equal(result.status, 0, result.stderr);
@@ -73,6 +74,7 @@ test('cli version output matches package metadata', async () => {
 test('readme command surface matches the implemented CLI surface', async () => {
   const readme = await readFile(readmePath, 'utf8');
 
+  assert.match(readme, /`gitrole import current --name <role>`/);
   assert.match(readme, /`gitrole pin <role>`/);
   assert.match(readme, /`gitrole current`/);
   assert.match(readme, /`gitrole resolve`/);
@@ -95,6 +97,135 @@ test('cli remote help exposes set and removes use', () => {
   assert.match(result.stdout, /set <name>/);
   assert.doesNotMatch(result.stdout, /\buse <name>\b/);
   assert.equal(result.stderr, '');
+});
+
+test('cli import help exposes current', () => {
+  const result = spawnSync(process.execPath, [cliPath, 'import', '--help'], {
+    encoding: 'utf8'
+  });
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /current/);
+  assert.equal(result.stderr, '');
+});
+
+test('cli import current saves the effective identity as a role and reports scope', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-cli-import-current-'));
+  const configHome = path.join(tempDir, 'config');
+  const repoDir = await initRealRepo('gitrole-cli-import-current-repo-');
+  const env = {
+    ...process.env,
+    HOME: tempDir,
+    XDG_CONFIG_HOME: configHome
+  };
+
+  runGit(['config', '--global', 'user.name', 'Pat Person'], repoDir, env);
+  runGit(['config', '--global', 'user.email', 'pat@personal.example'], repoDir, env);
+  runGit(['config', '--local', 'user.name', 'Alex Developer'], repoDir, env);
+  runGit(['config', '--local', 'user.email', 'alex@work.example'], repoDir, env);
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, 'import', 'current', '--name', 'work'],
+    {
+      cwd: repoDir,
+      encoding: 'utf8',
+      env
+    }
+  );
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /imported current identity as\s+work/);
+  assert.match(result.stdout, /commit\s+Alex Developer <alex@work.example>/);
+  assert.match(result.stdout, /scope\s+local/);
+  assert.equal(result.stderr, '');
+
+  const listResult = spawnSync(process.execPath, [cliPath, 'list'], {
+    cwd: repoDir,
+    encoding: 'utf8',
+    env
+  });
+  assert.equal(listResult.status, 0);
+  assert.match(listResult.stdout, /work/);
+  assert.match(listResult.stdout, /Alex Developer <alex@work.example>/);
+});
+
+test('cli import current uses the effective global identity when no local override exists', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-cli-import-global-'));
+  const configHome = path.join(tempDir, 'config');
+  const repoDir = await initRealRepo('gitrole-cli-import-global-repo-');
+  const env = {
+    ...process.env,
+    HOME: tempDir,
+    XDG_CONFIG_HOME: configHome
+  };
+
+  runGit(['config', '--global', 'user.name', 'Alex Developer'], repoDir, env);
+  runGit(['config', '--global', 'user.email', 'alex@work.example'], repoDir, env);
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, 'import', 'current', '--name', 'work'],
+    {
+      cwd: repoDir,
+      encoding: 'utf8',
+      env
+    }
+  );
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /scope\s+global/);
+  assert.equal(result.stderr, '');
+});
+
+test('cli import current fails when the current identity is incomplete', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-cli-import-incomplete-'));
+  const configHome = path.join(tempDir, 'config');
+  const repoDir = await initRealRepo('gitrole-cli-import-incomplete-repo-');
+  const env = {
+    ...process.env,
+    HOME: tempDir,
+    XDG_CONFIG_HOME: configHome
+  };
+
+  runGit(['config', '--global', 'user.name', 'Alex Developer'], repoDir, env);
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, 'import', 'current', '--name', 'work'],
+    {
+      cwd: repoDir,
+      encoding: 'utf8',
+      env
+    }
+  );
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  assert.match(
+    result.stderr,
+    /error: current commit identity is incomplete; user\.name and user\.email must both be configured/
+  );
+});
+
+test('cli import current fails clearly when git is unavailable', () => {
+  const env = {
+    ...process.env,
+    GITROLE_GIT_BIN: path.join(os.tmpdir(), 'does-not-exist-gitrole-git')
+  };
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, 'import', 'current', '--name', 'work'],
+    {
+      encoding: 'utf8',
+      env
+    }
+  );
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  assert.match(result.stderr, /error: git is not installed or not available on PATH/);
 });
 
 test('cli doctor and status help describe the warning policy', () => {

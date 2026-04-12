@@ -16,6 +16,7 @@ import {
   runCli,
   saveRole,
   setGlobalIdentity,
+  setLocalIdentity,
   setOrigin,
   writeRepoPolicy
 } from './harness.js';
@@ -208,6 +209,34 @@ test('e2e remote set preserves owner and repository while rewriting the host ali
     getOriginUrl(workspace),
     'git@github.com-acme-dev:acme-corp/service.git'
   );
+});
+
+test('e2e import current saves the effective local identity and current resolves it', async () => {
+  const workspace = await createHermeticWorkspace();
+
+  await initRepo(workspace);
+  setGlobalIdentity(workspace, {
+    name: 'Pat Person',
+    email: 'pat@personal.example'
+  });
+  setLocalIdentity(workspace, {
+    name: 'Alex Developer',
+    email: 'alex@work.example'
+  });
+  commitEmpty(workspace, {
+    message: 'feat: import current identity'
+  });
+
+  const importResult = runCli(workspace, ['import', 'current', '--name', 'work']);
+  mustSucceed(importResult, 'gitrole import current --name work failed');
+  assert.match(importResult.stdout, /imported current identity as\s+work/);
+  assert.match(importResult.stdout, /commit\s+Alex Developer <alex@work.example>/);
+  assert.match(importResult.stdout, /scope\s+local/);
+
+  const currentResult = runCli(workspace, ['current']);
+  mustSucceed(currentResult, 'gitrole current failed after import');
+  assert.match(currentResult.stdout, /current role\s+work/);
+  assert.match(currentResult.stdout, /commit\s+Alex Developer <alex@work.example>/);
 });
 
 test('e2e shared org repo stays aligned when the effective role is allowed but not default', async () => {

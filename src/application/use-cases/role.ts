@@ -6,6 +6,7 @@ import {
   type AppDependencies,
   type CurrentRoleDependencies,
   type CurrentRoleResult,
+  type ImportCurrentRoleResult,
   type ListRolesResult,
   type UseRoleDependencies,
   type UseRoleOptions,
@@ -31,6 +32,13 @@ export class NotInGitRepositoryError extends Error {
   constructor() {
     super('not inside a git repository; --local requires a repo context');
     this.name = 'NotInGitRepositoryError';
+  }
+}
+
+export class IncompleteCurrentIdentityError extends Error {
+  constructor() {
+    super('current commit identity is incomplete; user.name and user.email must both be configured');
+    this.name = 'IncompleteCurrentIdentityError';
   }
 }
 
@@ -138,21 +146,54 @@ async function assessRoleAlignmentSafely(
 export async function getCurrentRole(
   dependencies: CurrentRoleDependencies
 ): Promise<CurrentRoleResult> {
-  const [roles, globalName, globalEmail, localName, localEmail] = await Promise.all([
+  const [roles, currentIdentity] = await Promise.all([
     dependencies.roleStore.list(),
-    dependencies.gitConfig.getGlobalUserName(),
-    dependencies.gitConfig.getGlobalUserEmail(),
-    dependencies.repository?.getLocalUserName(),
-    dependencies.repository?.getLocalUserEmail()
+    getEffectiveCurrentIdentity(dependencies)
   ]);
-
   const identity = {
-    fullName: localName ?? globalName,
-    email: localEmail ?? globalEmail
+    fullName: currentIdentity.fullName,
+    email: currentIdentity.email
   };
   const role = roles.find((candidate) => matchesIdentity(candidate, identity));
 
-  return { identity, role };
+  return {
+    identity,
+    scope: currentIdentity.scope,
+    role
+  };
+}
+
+/**
+ * Saves the effective current commit identity as a named role.
+ *
+ * @remarks
+ * This import is intentionally narrow: it captures only the current commit
+ * identity that Git would use in the present repository context. It does not
+ * infer SSH configuration, GitHub usernames, or host aliases.
+ *
+ * @throws
+ * {@link IncompleteCurrentIdentityError} when `user.name` or `user.email` is missing.
+ */
+export async function importCurrentRole(
+  dependencies: CurrentRoleDependencies,
+  name: string
+): Promise<ImportCurrentRoleResult> {
+  const currentIdentity = await getEffectiveCurrentIdentity(dependencies);
+
+  if (!currentIdentity.fullName || !currentIdentity.email) {
+    throw new IncompleteCurrentIdentityError();
+  }
+
+  const role = await addRole(dependencies, {
+    name,
+    fullName: currentIdentity.fullName,
+    email: currentIdentity.email
+  });
+
+  return {
+    role,
+    scope: currentIdentity.scope
+  };
 }
 
 /**
@@ -169,6 +210,29 @@ export async function listRoles(
   return {
     roles,
     activeRoleName: current.role?.name
+  };
+}
+
+async function getEffectiveCurrentIdentity(
+  dependencies: CurrentRoleDependencies
+): Promise<{
+  fullName?: string;
+  email?: string;
+  scope: 'global' | 'local';
+}> {
+  const [globalName, globalEmail, localName, localEmail] = await Promise.all([
+    dependencies.gitConfig.getGlobalUserName(),
+    dependencies.gitConfig.getGlobalUserEmail(),
+    dependencies.repository?.getLocalUserName(),
+    dependencies.repository?.getLocalUserEmail()
+  ]);
+
+  const hasLocalOverride = localName !== undefined || localEmail !== undefined;
+
+  return {
+    fullName: localName ?? globalName,
+    email: localEmail ?? globalEmail,
+    scope: hasLocalOverride ? 'local' : 'global'
   };
 }
 

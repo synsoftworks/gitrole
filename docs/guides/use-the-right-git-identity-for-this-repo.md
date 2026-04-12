@@ -17,6 +17,16 @@ By the end, you will know how to:
 - check whether the repo is aligned
 - fix the remote if pushes still use the wrong GitHub account
 
+<h2 id="current-vs-status">Current vs status</h2>
+
+These two commands answer different questions:
+
+- <code>gitrole current</code> = "which saved role am I here?"
+- <code>gitrole status</code> = "does this repo look right for commit and push?"
+
+Use <code>current</code> when you want to know which role matches the active commit identity.
+Use <code>status</code> when you want the broader repo-alignment check.
+
 <h2 id="step-1-save-a-role">Step 1: Save a role</h2>
 
 Start by saving the identity you want to use in this repository.

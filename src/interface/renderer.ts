@@ -8,6 +8,7 @@ import chalk from 'chalk';
 import type {
   CurrentRoleResult,
   DoctorResult,
+  ImportCurrentRoleResult,
   ListRolesResult,
   PinRepoPolicyResult,
   RemoteUseResult,
@@ -79,6 +80,14 @@ export function renderCurrentRole(result: CurrentRoleResult): string {
   return [
     chalk.yellow('no matching role'),
     formatDetail('commit', formatIdentityPair(result.identity))
+  ].join('\n');
+}
+
+export function renderImportedCurrentRole(result: ImportCurrentRoleResult): string {
+  return [
+    `${chalk.green('imported current identity as')} ${chalk.bold(result.role.name)}`,
+    formatDetail('commit', formatIdentityPair(result.role)),
+    formatDetail('scope', result.scope)
   ].join('\n');
 }
 

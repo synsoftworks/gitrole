@@ -19,6 +19,13 @@
 
 `gitrole` is a focused CLI for developers who move between multiple Git identities on one machine. Save named roles like `work`, `personal`, or `client-acme`, switch to the right one, and check the repo before you commit or push.
 
+`gitrole` is strongest when it answers:
+
+- who will this commit say it is from?
+- who will GitHub think I am when I push?
+
+New features should reinforce that boundary rather than expanding into general account management.
+
 ## Install
 
 ```bash
@@ -30,29 +37,33 @@ npm install -g gitrole
 ```bash
 gitrole add work \
   --name "Alex Developer" \
-  --email "alex@work.example" \
-  --ssh ~/.ssh/id_work \
-  --github-user acme-dev \
-  --github-host github.com-acme-dev
+  --email "alex@work.example"
 
 gitrole use work --local
 gitrole status
 ```
 
-That is the basic workflow:
+That is the fastest path to first success:
 
-1. save a role
-2. switch this repo to it
-3. check the repo before you commit or push
+- `add` saves a role
+- `use --local` applies it only to this repository
+- `status` checks whether the repo looks ready to commit or push
 
 Run `gitrole doctor` when something looks wrong.
+
+## Common next steps
+
+If Git is already configured correctly and you just want to save that identity as a role:
+
+```bash
+gitrole import current --name work
+```
 
 If a repository should prefer exactly one saved role, pin a strict repo-local policy:
 
 ```bash
 gitrole pin work
 gitrole resolve
-gitrole resolve --json
 ```
 
 ## Learn more
@@ -69,13 +80,14 @@ Start with the docs if you want the full workflow, setup guides, and use cases:
 | Command                                                                                             | Purpose                                                                             |
 | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | `gitrole add <name> --name "..." --email "..." [--ssh ...] [--github-user ...] [--github-host ...]` | Create or update a saved role profile                                               |
+| `gitrole import current --name <role>`                                                               | Save the effective current commit identity as a named role                          |
 | `gitrole use <name> [--global \| --local]`                                                          | Switch git identity at global or repository-local scope and optionally load SSH key |
 | `gitrole pin <role>`                                                                                 | Create a strict repo-local `.gitrole` policy for a single saved role                |
 | `gitrole resolve`                                                                                   | Print the repo-local default role from `.gitrole`                                   |
 | `gitrole resolve --json`                                                                            | Emit the repo-local policy as structured JSON                                       |
 | `gitrole current`                                                                                   | Show which saved role matches the active commit identity                            |
 | `gitrole list`                                                                                      | List all saved roles and mark the active one                                        |
-| `gitrole status`                                                                                    | Quick human-readable repo and alignment check                                       |
+| `gitrole status`                                                                                    | Check whether the current repo is aligned for commit and push                       |
 | `gitrole status --short`                                                                            | Machine-friendly alignment fields for scripts and prompts                           |
 | `gitrole doctor`                                                                                    | Diagnose commit identity, remote config, and SSH push identity                      |
 | `gitrole doctor --json`                                                                             | Emit the full diagnosis as structured JSON                                          |

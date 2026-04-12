@@ -78,9 +78,14 @@ Make this distinction early:
 
 <div class="comparison-grid">
   <div class="surface">
+    <span class="eyebrow-inline">Active role</span>
+    <h3><code>gitrole current</code></h3>
+    <p>Use this when you want to know which saved role matches the active commit identity in this repo.</p>
+  </div>
+  <div class="surface">
     <span class="eyebrow-inline">Fast daily check</span>
     <h3><code>gitrole status</code></h3>
-    <p>Use this before you commit or push. It answers "does this repo look right?" without a lot of detail.</p>
+    <p>Use this before you commit or push. It answers "does this repo look right?" and checks the broader repo alignment.</p>
   </div>
   <div class="surface">
     <span class="eyebrow-inline">Full explanation</span>

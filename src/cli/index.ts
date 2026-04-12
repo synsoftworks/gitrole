@@ -15,6 +15,8 @@ import {
   getStatus,
   getCurrentRole,
   GitNotInstalledError,
+  importCurrentRole,
+  IncompleteCurrentIdentityError,
   listRoles,
   NotInGitRepositoryError,
   OriginRemoteNotConfiguredError,
@@ -44,6 +46,7 @@ import {
   renderCurrentRole,
   renderDoctor,
   renderError,
+  renderImportedCurrentRole,
   renderPinnedRepoPolicy,
   renderRepoNote,
   renderRemovedRole,
@@ -119,6 +122,7 @@ export function createProgram(
 
 Examples:
   $ gitrole add work --name "Alex Developer" --email "alex@work.example"
+  $ gitrole import current --name work
   $ gitrole use work
   $ gitrole use work --local
   $ gitrole pin work
@@ -213,6 +217,41 @@ Examples:
       }
     });
 
+  const importCommand = program
+    .command('import')
+    .description('import a role from the current effective Git identity')
+    .addHelpText(
+      'after',
+      `
+
+Examples:
+  $ gitrole import current --name work
+`
+    );
+
+  importCommand
+    .command('current')
+    .description('save the effective current commit identity as a named role')
+    .requiredOption('--name <role>', 'saved role name')
+    .addHelpText(
+      'after',
+      `
+
+Behavior:
+  - reads the effective current commit identity
+  - uses repo-local identity when a local override is active
+  - otherwise uses the global identity
+  - saves only name and email; it does not infer SSH or GitHub settings
+
+Example:
+  $ gitrole import current --name work
+`
+    )
+    .action(async (options: { name: string }) => {
+      const result = await importCurrentRole(dependencies, options.name);
+      io.stdout(renderImportedCurrentRole(result));
+    });
+
   program
     .command('pin')
     .description('create a strict repo-local .gitrole policy for one role')
@@ -264,10 +303,13 @@ Example:
 
   program
     .command('current')
-    .description('show the effective identity')
+    .description('show which saved role matches the active commit identity')
     .addHelpText(
       'after',
       `
+
+Use this when you want to know which saved role is active here.
+Use 'gitrole status' when you want to know whether the repo is ready to commit or push.
 
 Examples:
   $ gitrole current
@@ -285,7 +327,7 @@ Examples:
 
   program
     .command('status')
-    .description('show a quick human-readable alignment check')
+    .description('check whether the current repo is aligned for commit and push')
     .option('--short', 'show machine-friendly one-line status output')
     .addHelpText(
       'after',
@@ -294,6 +336,9 @@ Examples:
 Views:
   default   compact human-readable summary
   --short   stable one-line format for scripts, prompts, and automation
+
+Use this when you want to know whether the repo looks ready to commit or push.
+Use 'gitrole current' when you only want to know which saved role matches the active commit identity.
 
 Policy:
   status warns only on actionable mismatches.
@@ -430,6 +475,7 @@ function formatError(error: unknown): string {
   if (
     error instanceof ProfileNotFoundError ||
     error instanceof GitNotInstalledError ||
+    error instanceof IncompleteCurrentIdentityError ||
     error instanceof NotInGitRepositoryError ||
     error instanceof PinRepoPolicyRepositoryContextError ||
     error instanceof RepoPolicyRepositoryContextError ||

@@ -11,6 +11,8 @@ import {
   doctor,
   getCurrentRole,
   getStatus,
+  importCurrentRole,
+  IncompleteCurrentIdentityError,
   NotInGitRepositoryError,
   pinRepoPolicy,
   PinRepoPolicyRepositoryContextError,
@@ -349,6 +351,261 @@ test('use-role can apply the selected git identity to local repository config', 
   assert.deepEqual(calls.emails, []);
   assert.deepEqual(calls.localNames, ['Alex Developer']);
   assert.deepEqual(calls.localEmails, ['alex@work.example']);
+});
+
+test('import current saves the effective current identity as a role', async () => {
+  const saved: Role[] = [];
+
+  const result = await importCurrentRole(
+    {
+      roleStore: {
+        async list() {
+          return [];
+        },
+        async get() {
+          return undefined;
+        },
+        async save(role: Role) {
+          saved.push(role);
+        },
+        async remove() {
+          return true;
+        }
+      },
+      gitConfig: {
+        async getGlobalUserName() {
+          return 'Alex Developer';
+        },
+        async getGlobalUserEmail() {
+          return 'alex@work.example';
+        },
+        async setGlobalUserName() {
+          return undefined;
+        },
+        async setGlobalUserEmail() {
+          return undefined;
+        }
+      },
+      sshAgent: {
+        async loadKey() {
+          return { ok: true };
+        }
+      },
+      repository: {
+        async getLocalUserName() {
+          return undefined;
+        },
+        async getLocalUserEmail() {
+          return undefined;
+        }
+      }
+    },
+    'work'
+  );
+
+  assert.equal(result.scope, 'global');
+  assert.deepEqual(result.role, {
+    name: 'work',
+    fullName: 'Alex Developer',
+    email: 'alex@work.example',
+    sshKeyPath: undefined,
+    githubUser: undefined,
+    githubHost: undefined
+  });
+  assert.deepEqual(saved, [result.role]);
+});
+
+test('import current prefers the effective local identity when a repo-local override is active', async () => {
+  const saved: Role[] = [];
+
+  const result = await importCurrentRole(
+    {
+      roleStore: {
+        async list() {
+          return [];
+        },
+        async get() {
+          return undefined;
+        },
+        async save(role: Role) {
+          saved.push(role);
+        },
+        async remove() {
+          return true;
+        }
+      },
+      gitConfig: {
+        async getGlobalUserName() {
+          return 'Pat Person';
+        },
+        async getGlobalUserEmail() {
+          return 'pat@personal.example';
+        },
+        async setGlobalUserName() {
+          return undefined;
+        },
+        async setGlobalUserEmail() {
+          return undefined;
+        }
+      },
+      sshAgent: {
+        async loadKey() {
+          return { ok: true };
+        }
+      },
+      repository: {
+        async getLocalUserName() {
+          return 'Alex Developer';
+        },
+        async getLocalUserEmail() {
+          return 'alex@work.example';
+        }
+      }
+    },
+    'work'
+  );
+
+  assert.equal(result.scope, 'local');
+  assert.deepEqual(saved, [
+    {
+      name: 'work',
+      fullName: 'Alex Developer',
+      email: 'alex@work.example',
+      sshKeyPath: undefined,
+      githubUser: undefined,
+      githubHost: undefined
+    }
+  ]);
+});
+
+test('import current updates an existing role with the effective commit identity only', async () => {
+  const saved: Role[] = [];
+
+  const result = await importCurrentRole(
+    {
+      roleStore: {
+        async list() {
+          return [
+            {
+              name: 'work',
+              fullName: 'Old Name',
+              email: 'old@work.example',
+              sshKeyPath: '~/.ssh/id_old',
+              githubUser: 'old-user',
+              githubHost: 'github.com-old'
+            }
+          ];
+        },
+        async get() {
+          return {
+            name: 'work',
+            fullName: 'Old Name',
+            email: 'old@work.example',
+            sshKeyPath: '~/.ssh/id_old',
+            githubUser: 'old-user',
+            githubHost: 'github.com-old'
+          };
+        },
+        async save(role: Role) {
+          saved.push(role);
+        },
+        async remove() {
+          return true;
+        }
+      },
+      gitConfig: {
+        async getGlobalUserName() {
+          return 'Alex Developer';
+        },
+        async getGlobalUserEmail() {
+          return 'alex@work.example';
+        },
+        async setGlobalUserName() {
+          return undefined;
+        },
+        async setGlobalUserEmail() {
+          return undefined;
+        }
+      },
+      sshAgent: {
+        async loadKey() {
+          return { ok: true };
+        }
+      },
+      repository: {
+        async getLocalUserName() {
+          return undefined;
+        },
+        async getLocalUserEmail() {
+          return undefined;
+        }
+      }
+    },
+    'work'
+  );
+
+  assert.deepEqual(result.role, {
+    name: 'work',
+    fullName: 'Alex Developer',
+    email: 'alex@work.example',
+    sshKeyPath: undefined,
+    githubUser: undefined,
+    githubHost: undefined
+  });
+  assert.deepEqual(saved, [result.role]);
+});
+
+test('import current fails when the current identity is incomplete', async () => {
+  await assert.rejects(
+    () =>
+      importCurrentRole(
+        {
+          roleStore: {
+            async list() {
+              return [];
+            },
+            async get() {
+              return undefined;
+            },
+            async save() {
+              return undefined;
+            },
+            async remove() {
+              return true;
+            }
+          },
+          gitConfig: {
+            async getGlobalUserName() {
+              return 'Alex Developer';
+            },
+            async getGlobalUserEmail() {
+              return undefined;
+            },
+            async setGlobalUserName() {
+              return undefined;
+            },
+            async setGlobalUserEmail() {
+              return undefined;
+            }
+          },
+          sshAgent: {
+            async loadKey() {
+              return { ok: true };
+            }
+          },
+          repository: {
+            async getLocalUserName() {
+              return undefined;
+            },
+            async getLocalUserEmail() {
+              return undefined;
+            }
+          }
+        },
+        'work'
+      ),
+    IncompleteCurrentIdentityError
+  );
 });
 
 test('pin creates a strict repo-local policy with the selected role only', async () => {
