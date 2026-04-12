@@ -15,12 +15,18 @@ export interface UseRoleResult {
 
 export interface CurrentRoleResult {
   identity: GitIdentity;
+  scope: 'global' | 'local';
   role?: Role;
 }
 
 export interface ListRolesResult {
   roles: Role[];
   activeRoleName?: string;
+}
+
+export interface ImportCurrentRoleResult {
+  role: Role;
+  scope: 'global' | 'local';
 }
 
 export interface DiagnosedValue {

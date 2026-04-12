@@ -18,13 +18,13 @@ summary: The current gitrole command surface, with the short purpose of each com
   <dd>Print the repo-local default role from <code>.gitrole</code>.</dd>
 
   <dt><code>gitrole current</code></dt>
-  <dd>Show which saved role matches the current effective commit identity.</dd>
+  <dd>Show which saved role matches the active commit identity.</dd>
 
   <dt><code>gitrole list</code></dt>
   <dd>List all saved roles and mark the active one when there is a match.</dd>
 
   <dt><code>gitrole status</code></dt>
-  <dd>Show the fast human-readable alignment check for the current repository.</dd>
+  <dd>Check whether the current repository is aligned for commit and push.</dd>
 
   <dt><code>gitrole status --short</code></dt>
   <dd>Show the one-line machine-friendly alignment check.</dd>
