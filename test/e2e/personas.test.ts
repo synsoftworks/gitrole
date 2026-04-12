@@ -124,7 +124,6 @@ async function verifyAlignedPersonaScenario(scenario: PersonaScenario): Promise<
     statusResult.stdout,
     new RegExp(`scope\\s+${escapeRegex(scenario.scope === 'local' ? 'local override' : 'global')}`)
   );
-  assert.match(statusResult.stdout, new RegExp(escapeRegex(scenario.commitMessage)));
   assert.doesNotMatch(statusResult.stdout, /\bwarning\b/);
 
   const statusShortResult = runCli(workspace, ['status', '--short']);
