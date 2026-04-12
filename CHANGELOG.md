@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/synsoftworks/gitrole/compare/v0.6.0...v0.7.0) (2026-04-12)
+
+
+### Features
+
+* **cli:** add import current onboarding command ([#37](https://github.com/synsoftworks/gitrole/issues/37)) ([6dea02e](https://github.com/synsoftworks/gitrole/commit/6dea02eb639d2f3bf68d252e92a6512979609b4e))
+
 ## [0.6.0](https://github.com/synsoftworks/gitrole/compare/gitrole-v0.5.0...gitrole-v0.6.0) (2026-04-12)
 
 
