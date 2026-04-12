@@ -1,6 +1,7 @@
 /*
  * Loads and evaluates the repository-local .gitrole policy file.
  */
+import { writeFile } from 'node:fs/promises';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -24,6 +25,15 @@ export class RepoPolicyNotFoundError extends Error {
   constructor() {
     super(`repo policy file ${repoPolicyFilename} was not found in the repository root`);
     this.name = 'RepoPolicyNotFoundError';
+  }
+}
+
+export class RepoPolicyAlreadyExistsError extends Error {
+  constructor() {
+    super(
+      `${repoPolicyFilename} already exists in this repo; gitrole pin will not overwrite or merge existing repo policy`
+    );
+    this.name = 'RepoPolicyAlreadyExistsError';
   }
 }
 
@@ -55,6 +65,29 @@ export async function loadRepoPolicy(
 ): Promise<RepoPolicy> {
   const targetPath = await resolveRepoPolicyPath(repository);
   return loadRepoPolicyFile(targetPath);
+}
+
+export async function saveRepoPolicy(
+  repository: Pick<GitRepository, 'isInsideWorkTree' | 'getTopLevelPath'>,
+  repoPolicy: RepoPolicy
+): Promise<void> {
+  const targetPath = await resolveRepoPolicyPath(repository);
+  const normalizedPolicy = validateRepoPolicy(repoPolicy);
+
+  try {
+    await writeFile(`${targetPath}`, `${JSON.stringify(normalizedPolicy, null, 2)}\n`, {
+      encoding: 'utf8',
+      flag: 'wx'
+    });
+  } catch (error) {
+    const writeError = error as NodeJS.ErrnoException;
+
+    if (writeError.code === 'EEXIST') {
+      throw new RepoPolicyAlreadyExistsError();
+    }
+
+    throw error;
+  }
 }
 
 export async function loadOptionalRepoPolicy(

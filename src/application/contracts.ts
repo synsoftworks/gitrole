@@ -71,6 +71,11 @@ export interface RepoPolicyEvaluation extends RepoPolicy {
   status: RepoPolicyStatus;
 }
 
+export interface PinRepoPolicyResult {
+  role: Role;
+  repoPolicy: RepoPolicy;
+}
+
 export interface DoctorResult {
   role?: Role;
   overall: OverallStatus;
@@ -199,6 +204,11 @@ export interface DoctorDependencies {
 }
 
 export interface ResolveRepoPolicyDependencies {
+  repository: Pick<GitRepository, 'isInsideWorkTree' | 'getTopLevelPath'>;
+}
+
+export interface PinRepoPolicyDependencies {
+  roleStore: RoleStore;
   repository: Pick<GitRepository, 'isInsideWorkTree' | 'getTopLevelPath'>;
 }
 

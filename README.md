@@ -47,6 +47,14 @@ That is the basic workflow:
 
 Run `gitrole doctor` when something looks wrong.
 
+If a repository should prefer exactly one saved role, pin a strict repo-local policy:
+
+```bash
+gitrole pin work
+gitrole resolve
+gitrole resolve --json
+```
+
 ## Learn more
 
 Start with the docs if you want the full workflow, setup guides, and use cases:
@@ -62,7 +70,9 @@ Start with the docs if you want the full workflow, setup guides, and use cases:
 | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | `gitrole add <name> --name "..." --email "..." [--ssh ...] [--github-user ...] [--github-host ...]` | Create or update a saved role profile                                               |
 | `gitrole use <name> [--global \| --local]`                                                          | Switch git identity at global or repository-local scope and optionally load SSH key |
+| `gitrole pin <role>`                                                                                 | Create a strict repo-local `.gitrole` policy for a single saved role                |
 | `gitrole resolve`                                                                                   | Print the repo-local default role from `.gitrole`                                   |
+| `gitrole resolve --json`                                                                            | Emit the repo-local policy as structured JSON                                       |
 | `gitrole current`                                                                                   | Show which saved role matches the active commit identity                            |
 | `gitrole list`                                                                                      | List all saved roles and mark the active one                                        |
 | `gitrole status`                                                                                    | Quick human-readable repo and alignment check                                       |
