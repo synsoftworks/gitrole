@@ -179,8 +179,8 @@ tell you which role is preferred there and which roles are still allowed.
 ```json
 {
   "version": 1,
-  "defaultRole": "synsoftworksdev",
-  "allowedRoles": ["synsoftworksdev", "saraeloop"]
+  "defaultRole": "company-main",
+  "allowedRoles": ["company-main", "maintainer-personal"]
 }
 ```
 

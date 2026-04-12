@@ -153,8 +153,8 @@ Example:
 ```json
 {
   "version": 1,
-  "defaultRole": "synsoftworksdev",
-  "allowedRoles": ["synsoftworksdev", "saraeloop"]
+  "defaultRole": "company-main",
+  "allowedRoles": ["company-main", "maintainer-personal"]
 }
 ```
 

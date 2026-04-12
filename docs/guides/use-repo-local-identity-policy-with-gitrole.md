@@ -22,8 +22,8 @@ The first version is intentionally small:
 ```json
 {
   "version": 1,
-  "defaultRole": "synsoftworksdev",
-  "allowedRoles": ["synsoftworksdev", "saraeloop"]
+  "defaultRole": "company-main",
+  "allowedRoles": ["company-main", "maintainer-personal"]
 }
 ```
 
@@ -47,7 +47,7 @@ If the repo has a valid <code>.gitrole</code> file, <code>resolve</code> prints 
 Example:
 
 ```text
-synsoftworksdev
+company-main
 ```
 
 This is useful for both humans and automation because it answers one direct question: "what role belongs here by default?"
@@ -71,18 +71,18 @@ This is useful for a shared org repository where both the org identity and a per
 ```json
 {
   "version": 1,
-  "defaultRole": "synsoftworksdev",
-  "allowedRoles": ["synsoftworksdev", "saraeloop"]
+  "defaultRole": "company-main",
+  "allowedRoles": ["company-main", "maintainer-personal"]
 }
 ```
 
-If you are currently using <code>saraeloop</code>, the repo can still be aligned.
+If you are currently using <code>maintainer-personal</code>, the repo can still be aligned.
 
 Example status output:
 
 ```text
-saraeloop  Saraeloop <saraeloop@gmail.com>  global  aligned
-repo policy  allowed role saraeloop (default: synsoftworksdev)
+maintainer-personal  Maintainer Name <maintainer@personal.example>  global  aligned
+repo policy  allowed role maintainer-personal (default: company-main)
 ```
 
 Example doctor interpretation:
