@@ -18,6 +18,8 @@ import {
   listRoles,
   NotInGitRepositoryError,
   OriginRemoteNotConfiguredError,
+  pinRepoPolicy,
+  PinRepoPolicyRepositoryContextError,
   ProfileNotFoundError,
   removeRole,
   RoleMissingGithubHostError,
@@ -28,6 +30,7 @@ import {
 } from '../application/use-cases/index.js';
 import type { AppDependencies, DoctorDependencies } from '../application/contracts.js';
 import {
+  RepoPolicyAlreadyExistsError,
   InvalidRepoPolicyError,
   RepoPolicyNotFoundError,
   RepoPolicyRepositoryContextError
@@ -41,6 +44,7 @@ import {
   renderCurrentRole,
   renderDoctor,
   renderError,
+  renderPinnedRepoPolicy,
   renderRepoNote,
   renderRemovedRole,
   renderRemoteUse,
@@ -117,7 +121,9 @@ Examples:
   $ gitrole add work --name "Alex Developer" --email "alex@work.example"
   $ gitrole use work
   $ gitrole use work --local
+  $ gitrole pin work
   $ gitrole resolve
+  $ gitrole resolve --json
   $ gitrole current
   $ gitrole status
   $ gitrole doctor
@@ -208,8 +214,34 @@ Examples:
     });
 
   program
+    .command('pin')
+    .description('create a strict repo-local .gitrole policy for one role')
+    .argument('<role>', 'saved role name')
+    .addHelpText(
+      'after',
+      `
+
+Behavior:
+  - creates a new ${'.gitrole'} file in the repository root
+  - sets defaultRole and allowedRoles to the selected role only
+  - fails if ${'.gitrole'} already exists; it does not merge or overwrite policy
+
+Examples:
+  $ gitrole pin work
+`
+    )
+    .action(async (role: string) => {
+      const result = await pinRepoPolicy({
+        roleStore: dependencies.roleStore,
+        repository: dependencies.repository
+      }, role);
+      io.stdout(renderPinnedRepoPolicy(result));
+    });
+
+  program
     .command('resolve')
     .description('print the repo-local default role from .gitrole')
+    .option('--json', 'write the repo policy as JSON')
     .addHelpText(
       'after',
       `
@@ -220,13 +252,14 @@ Repo policy:
 
 Example:
   $ gitrole resolve
+  $ gitrole resolve --json
 `
     )
-    .action(async () => {
+    .action(async (options: { json?: boolean }) => {
       const repoPolicy = await resolveRepoPolicy({
         repository: dependencies.repository
       });
-      io.stdout(repoPolicy.defaultRole);
+      io.stdout(options.json ? JSON.stringify(repoPolicy, null, 2) : repoPolicy.defaultRole);
     });
 
   program
@@ -398,8 +431,10 @@ function formatError(error: unknown): string {
     error instanceof ProfileNotFoundError ||
     error instanceof GitNotInstalledError ||
     error instanceof NotInGitRepositoryError ||
+    error instanceof PinRepoPolicyRepositoryContextError ||
     error instanceof RepoPolicyRepositoryContextError ||
     error instanceof RepoPolicyNotFoundError ||
+    error instanceof RepoPolicyAlreadyExistsError ||
     error instanceof InvalidRepoPolicyError ||
     error instanceof RoleMissingGithubHostError ||
     error instanceof OriginRemoteNotConfiguredError ||

@@ -283,3 +283,70 @@ test('e2e shared org repo stays aligned when the effective role is allowed but n
     true
   );
 });
+
+test('e2e pin creates repo policy that resolve, status, and doctor all observe', async () => {
+  const workspace = await createHermeticWorkspace({
+    sshUsersByHost: {
+      'github.com-acme-dev': 'alex-dev'
+    }
+  });
+
+  await initRepo(workspace);
+  setGlobalIdentity(workspace, {
+    name: 'Alex Developer',
+    email: 'alex@work.example'
+  });
+  await saveRole(workspace, {
+    name: 'work',
+    fullName: 'Alex Developer',
+    email: 'alex@work.example',
+    githubUser: 'alex-dev',
+    githubHost: 'github.com-acme-dev'
+  });
+  commitEmpty(workspace, {
+    message: 'feat: pin repo policy flow'
+  });
+  setOrigin(workspace, 'git@github.com-acme-dev:acme-corp/service.git');
+
+  const pinResult = runCli(workspace, ['pin', 'work']);
+  mustSucceed(pinResult, 'gitrole pin work failed');
+  assert.match(pinResult.stdout, /pinned role\s+work/);
+
+  const resolveResult = runCli(workspace, ['resolve']);
+  mustSucceed(resolveResult, 'gitrole resolve failed after pin');
+  assert.equal(resolveResult.stdout.trim(), 'work');
+
+  const resolveJson = parseJsonOutput<{
+    version: number;
+    defaultRole: string;
+    allowedRoles: string[];
+  }>(runCli(workspace, ['resolve', '--json']), 'gitrole resolve --json failed after pin');
+  assert.deepEqual(resolveJson, {
+    version: 1,
+    defaultRole: 'work',
+    allowedRoles: ['work']
+  });
+
+  const statusResult = runCli(workspace, ['status']);
+  mustSucceed(statusResult, 'gitrole status failed after pin');
+  assert.match(statusResult.stdout, /policy\s+default role work/);
+
+  const doctorJson = parseJsonOutput<{
+    overall: string;
+    repoPolicy?: {
+      version: number;
+      defaultRole: string;
+      allowedRoles: string[];
+      effectiveRole?: string;
+      status: string;
+    };
+  }>(runCli(workspace, ['doctor', '--json']), 'gitrole doctor --json failed after pin');
+  assert.equal(doctorJson.overall, 'aligned');
+  assert.deepEqual(doctorJson.repoPolicy, {
+    version: 1,
+    defaultRole: 'work',
+    allowedRoles: ['work'],
+    effectiveRole: 'work',
+    status: 'default'
+  });
+});

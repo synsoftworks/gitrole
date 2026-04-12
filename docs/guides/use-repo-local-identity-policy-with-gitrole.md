@@ -8,12 +8,46 @@ order: 2
 
 <h2 id="what-this-is">What this is</h2>
 
-Use a root-level <code>.gitrole</code> file when a repository should declare:
+Use a root-level <code>.gitrole</code> file when a repository should say:
 
-- which role is preferred there
-- which roles are still allowed there
+- "this role is the normal one here"
+- "these roles are still okay here"
 
-This is repo-local identity policy, not workflow automation. It does not switch roles for you, install hooks, or block commits.
+This is repo-local identity policy, not workflow automation.
+
+It does not:
+
+- switch roles for you
+- install hooks
+- block commits
+
+It just gives the repo a small, clear identity rule.
+
+<h2 id="pin-a-repo-to-one-role">Pin a repo to one role</h2>
+
+If a repo should use exactly one saved role most of the time, this is the easiest path:
+
+```bash
+gitrole pin company-main
+```
+
+That creates a <code>.gitrole</code> file like this:
+
+```json
+{
+  "version": 1,
+  "defaultRole": "company-main",
+  "allowedRoles": ["company-main"]
+}
+```
+
+Think of <code>pin</code> as saying:
+
+- this repo belongs to <code>company-main</code>
+- do not guess
+- do not allow extra roles unless someone edits the policy on purpose
+
+If <code>.gitrole</code> already exists, <code>gitrole pin</code> fails on purpose. It will not merge, overwrite, or silently expand the policy.
 
 <h2 id="the-file-format">The file format</h2>
 
@@ -50,11 +84,27 @@ Example:
 company-main
 ```
 
-If no <code>.gitrole</code> file exists, <code>resolve</code> fails clearly, and <code>status</code> and <code>doctor</code> continue to behave normally.
+If you want the whole policy as JSON for scripts, prompts, or agents, use:
+
+```bash
+gitrole resolve --json
+```
+
+Example:
+
+```json
+{
+  "version": 1,
+  "defaultRole": "company-main",
+  "allowedRoles": ["company-main", "maintainer-personal"]
+}
+```
+
+If no <code>.gitrole</code> file exists, <code>resolve</code> fails clearly. <code>status</code> and <code>doctor</code> still work normally without repo policy.
 
 <h2 id="how-status-and-doctor-use-policy">How status and doctor use policy</h2>
 
-When <code>.gitrole</code> exists, <code>gitrole status</code> and <code>gitrole doctor</code> layer repo policy on top of the normal identity, remote, and SSH checks.
+When <code>.gitrole</code> exists, <code>gitrole status</code> and <code>gitrole doctor</code> add repo policy on top of the normal identity, remote, and SSH checks.
 
 The policy states are simple:
 
@@ -66,7 +116,7 @@ Allowed-but-not-default does not degrade the repo to warning by itself.
 
 <h2 id="shared-repo-example">Shared repo example</h2>
 
-This is useful for a shared org repository where both the org identity and a personal maintainer identity are valid:
+This is useful for a shared org repo where both the org identity and a maintainer's personal identity are valid:
 
 ```json
 {
@@ -98,4 +148,9 @@ Add <code>.gitrole</code> when a repository has an identity policy you want to m
 - a shared repo where more than one role is valid
 - an open-source repo where a maintainer identity is allowed but not always the default
 
-Keep it small. If all you need is "what role belongs here?" and "is this role allowed here?", <code>.gitrole</code> is enough.
+Keep it small.
+
+Use <code>.gitrole</code> when you want the repo to answer two simple questions:
+
+- what role is preferred here?
+- is the current role allowed here?

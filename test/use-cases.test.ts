@@ -3,7 +3,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -12,10 +12,13 @@ import {
   getCurrentRole,
   getStatus,
   NotInGitRepositoryError,
+  pinRepoPolicy,
+  PinRepoPolicyRepositoryContextError,
   useRemoteForRole,
   useRole
 } from '../src/application/use-cases/index.js';
 import type { AppDependencies, DoctorDependencies } from '../src/application/contracts.js';
+import { RepoPolicyAlreadyExistsError } from '../src/application/repo-policy.js';
 import { parseRemoteUrl } from '../src/adapters/git-repository.js';
 import type { Role } from '../src/domain/role.js';
 
@@ -346,6 +349,147 @@ test('use-role can apply the selected git identity to local repository config', 
   assert.deepEqual(calls.emails, []);
   assert.deepEqual(calls.localNames, ['Alex Developer']);
   assert.deepEqual(calls.localEmails, ['alex@work.example']);
+});
+
+test('pin creates a strict repo-local policy with the selected role only', async () => {
+  const repoDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-pin-use-case-'));
+  const role: Role = {
+    name: 'work',
+    fullName: 'Alex Developer',
+    email: 'alex@work.example'
+  };
+
+  const result = await pinRepoPolicy(
+    {
+      roleStore: {
+        async list() {
+          return [role];
+        },
+        async get(name: string) {
+          return name === role.name ? role : undefined;
+        },
+        async save() {
+          return undefined;
+        },
+        async remove() {
+          return true;
+        }
+      },
+      repository: {
+        async isInsideWorkTree() {
+          return true;
+        },
+        async getTopLevelPath() {
+          return repoDir;
+        }
+      }
+    },
+    'work'
+  );
+
+  assert.equal(result.role.name, 'work');
+  assert.deepEqual(result.repoPolicy, {
+    version: 1,
+    defaultRole: 'work',
+    allowedRoles: ['work']
+  });
+  assert.equal(
+    await readFile(path.join(repoDir, '.gitrole'), 'utf8'),
+    '{\n  "version": 1,\n  "defaultRole": "work",\n  "allowedRoles": [\n    "work"\n  ]\n}\n'
+  );
+});
+
+test('pin fails outside a git repository', async () => {
+  const role: Role = {
+    name: 'work',
+    fullName: 'Alex Developer',
+    email: 'alex@work.example'
+  };
+
+  await assert.rejects(
+    () =>
+      pinRepoPolicy(
+        {
+          roleStore: {
+            async list() {
+              return [role];
+            },
+            async get(name: string) {
+              return name === role.name ? role : undefined;
+            },
+            async save() {
+              return undefined;
+            },
+            async remove() {
+              return true;
+            }
+          },
+          repository: {
+            async isInsideWorkTree() {
+              return false;
+            },
+            async getTopLevelPath() {
+              return undefined;
+            }
+          }
+        },
+        'work'
+      ),
+    PinRepoPolicyRepositoryContextError
+  );
+});
+
+test('pin fails when the repo already has policy and does not overwrite it', async () => {
+  const repoDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-pin-existing-'));
+  const existingPolicy = JSON.stringify(
+    {
+      version: 1,
+      defaultRole: 'personal',
+      allowedRoles: ['personal', 'work']
+    },
+    null,
+    2
+  );
+  await writeFile(path.join(repoDir, '.gitrole'), `${existingPolicy}\n`, 'utf8');
+
+  const role: Role = {
+    name: 'work',
+    fullName: 'Alex Developer',
+    email: 'alex@work.example'
+  };
+
+  await assert.rejects(
+    () =>
+      pinRepoPolicy(
+        {
+          roleStore: {
+            async list() {
+              return [role];
+            },
+            async get(name: string) {
+              return name === role.name ? role : undefined;
+            },
+            async save() {
+              return undefined;
+            },
+            async remove() {
+              return true;
+            }
+          },
+          repository: {
+            async isInsideWorkTree() {
+              return true;
+            },
+            async getTopLevelPath() {
+              return repoDir;
+            }
+          }
+        },
+        'work'
+      ),
+    RepoPolicyAlreadyExistsError
+  );
+  assert.equal(await readFile(path.join(repoDir, '.gitrole'), 'utf8'), `${existingPolicy}\n`);
 });
 
 test('use-role rejects local scope outside a git repository', async () => {

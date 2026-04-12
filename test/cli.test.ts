@@ -73,8 +73,10 @@ test('cli version output matches package metadata', async () => {
 test('readme command surface matches the implemented CLI surface', async () => {
   const readme = await readFile(readmePath, 'utf8');
 
+  assert.match(readme, /`gitrole pin <role>`/);
   assert.match(readme, /`gitrole current`/);
   assert.match(readme, /`gitrole resolve`/);
+  assert.match(readme, /`gitrole resolve --json`/);
   assert.match(readme, /`gitrole status --short`/);
   assert.match(readme, /`gitrole doctor --json`/);
   assert.match(readme, /`gitrole remote set <name>`/);
@@ -120,6 +122,18 @@ test('cli resolve help describes repo-local policy', () => {
   assert.equal(result.status, 0);
   assert.match(result.stdout, /repository-local \.gitrole file/i);
   assert.match(result.stdout, /prints the configured defaultRole/i);
+  assert.match(result.stdout, /gitrole resolve --json/);
+  assert.equal(result.stderr, '');
+});
+
+test('cli pin help describes strict repo-local policy creation', () => {
+  const result = spawnSync(process.execPath, [cliPath, 'pin', '--help'], {
+    encoding: 'utf8'
+  });
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /creates a new \.gitrole file/i);
+  assert.match(result.stdout, /does not merge or overwrite policy/i);
   assert.equal(result.stderr, '');
 });
 
@@ -524,6 +538,37 @@ test('cli resolve returns the repo default role from .gitrole', async () => {
   assert.equal(result.stderr, '');
 });
 
+test('cli resolve --json emits valid JSON matching the repo policy', async () => {
+  const repoDir = await initRealRepo('gitrole-cli-resolve-json-ok-');
+
+  await writeFile(
+    path.join(repoDir, '.gitrole'),
+    JSON.stringify(
+      {
+        version: 1,
+        defaultRole: 'synsoftworksdev',
+        allowedRoles: ['synsoftworksdev', 'saraeloop']
+      },
+      null,
+      2
+    ),
+    'utf8'
+  );
+
+  const result = spawnSync(process.execPath, [cliPath, 'resolve', '--json'], {
+    cwd: repoDir,
+    encoding: 'utf8'
+  });
+
+  assert.equal(result.status, 0);
+  assert.equal(result.stderr, '');
+  assert.deepEqual(JSON.parse(result.stdout), {
+    version: 1,
+    defaultRole: 'synsoftworksdev',
+    allowedRoles: ['synsoftworksdev', 'saraeloop']
+  });
+});
+
 test('cli resolve fails outside a git repository', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-cli-resolve-outside-'));
   const result = spawnSync(process.execPath, [cliPath, 'resolve'], {
@@ -563,6 +608,33 @@ test('cli resolve fails when .gitrole contains invalid JSON', async () => {
   assert.match(result.stderr, /error: repo policy file \.gitrole is invalid: expected valid JSON/);
 });
 
+test('cli resolve --json fails when .gitrole is missing', async () => {
+  const repoDir = await initRealRepo('gitrole-cli-resolve-json-missing-');
+  const result = spawnSync(process.execPath, [cliPath, 'resolve', '--json'], {
+    cwd: repoDir,
+    encoding: 'utf8'
+  });
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  assert.match(result.stderr, /error: repo policy file \.gitrole was not found in the repository root/);
+});
+
+test('cli resolve --json fails when .gitrole contains invalid JSON', async () => {
+  const repoDir = await initRealRepo('gitrole-cli-resolve-json-invalid-');
+
+  await writeFile(path.join(repoDir, '.gitrole'), '{bad-json', 'utf8');
+
+  const result = spawnSync(process.execPath, [cliPath, 'resolve', '--json'], {
+    cwd: repoDir,
+    encoding: 'utf8'
+  });
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  assert.match(result.stderr, /error: repo policy file \.gitrole is invalid: expected valid JSON/);
+});
+
 test('cli resolve fails when .gitrole has an invalid schema', async () => {
   const repoDir = await initRealRepo('gitrole-cli-resolve-schema-');
 
@@ -588,6 +660,116 @@ test('cli resolve fails when .gitrole has an invalid schema', async () => {
   assert.equal(result.status, 1);
   assert.equal(result.stdout, '');
   assert.match(result.stderr, /error: repo policy file \.gitrole is invalid: defaultRole must appear in allowedRoles/);
+});
+
+test('cli pin creates .gitrole with the expected strict policy and prints a clear summary', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-cli-pin-ok-'));
+  const configHome = path.join(tempDir, 'config');
+  const repoDir = await initRealRepo('gitrole-cli-pin-repo-');
+  const env = {
+    ...process.env,
+    HOME: tempDir,
+    XDG_CONFIG_HOME: configHome
+  };
+
+  const addResult = spawnSync(
+    process.execPath,
+    [cliPath, 'add', 'work', '--name', 'Alex Developer', '--email', 'alex@work.example'],
+    { cwd: repoDir, encoding: 'utf8', env }
+  );
+  assert.equal(addResult.status, 0, addResult.stderr);
+
+  const result = spawnSync(process.execPath, [cliPath, 'pin', 'work'], {
+    cwd: repoDir,
+    encoding: 'utf8',
+    env
+  });
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /pinned role\s+work/);
+  assert.match(result.stdout, /file\s+\.gitrole/);
+  assert.match(result.stdout, /default\s+work/);
+  assert.match(result.stdout, /allowed\s+work/);
+  assert.equal(result.stderr, '');
+  assert.equal(
+    await readFile(path.join(repoDir, '.gitrole'), 'utf8'),
+    '{\n  "version": 1,\n  "defaultRole": "work",\n  "allowedRoles": [\n    "work"\n  ]\n}\n'
+  );
+});
+
+test('cli pin fails outside a git repository', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-cli-pin-outside-'));
+  const configHome = path.join(tempDir, 'config');
+  const env = {
+    ...process.env,
+    HOME: tempDir,
+    XDG_CONFIG_HOME: configHome
+  };
+
+  const addResult = spawnSync(
+    process.execPath,
+    [cliPath, 'add', 'work', '--name', 'Alex Developer', '--email', 'alex@work.example'],
+    { cwd: tempDir, encoding: 'utf8', env }
+  );
+  assert.equal(addResult.status, 0, addResult.stderr);
+
+  const result = spawnSync(process.execPath, [cliPath, 'pin', 'work'], {
+    cwd: tempDir,
+    encoding: 'utf8',
+    env
+  });
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  assert.match(result.stderr, /error: not inside a git repository; pin requires a repo context/);
+});
+
+test('cli pin fails when the role does not exist', async () => {
+  const repoDir = await initRealRepo('gitrole-cli-pin-missing-role-');
+
+  const result = spawnSync(process.execPath, [cliPath, 'pin', 'work'], {
+    cwd: repoDir,
+    encoding: 'utf8'
+  });
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  assert.match(result.stderr, /error: role "work" was not found/);
+});
+
+test('cli pin fails when .gitrole already exists and does not overwrite it', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-cli-pin-existing-'));
+  const configHome = path.join(tempDir, 'config');
+  const repoDir = await initRealRepo('gitrole-cli-pin-repo-existing-');
+  const env = {
+    ...process.env,
+    HOME: tempDir,
+    XDG_CONFIG_HOME: configHome
+  };
+  const existingPolicy = '{\n  "version": 1,\n  "defaultRole": "personal",\n  "allowedRoles": [\n    "personal",\n    "work"\n  ]\n}\n';
+
+  await writeFile(path.join(repoDir, '.gitrole'), existingPolicy, 'utf8');
+
+  const addResult = spawnSync(
+    process.execPath,
+    [cliPath, 'add', 'work', '--name', 'Alex Developer', '--email', 'alex@work.example'],
+    { cwd: repoDir, encoding: 'utf8', env }
+  );
+  assert.equal(addResult.status, 0, addResult.stderr);
+
+  const result = spawnSync(process.execPath, [cliPath, 'pin', 'work'], {
+    cwd: repoDir,
+    encoding: 'utf8',
+    env
+  });
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  assert.match(
+    result.stderr,
+    /error: \.gitrole already exists in this repo; gitrole pin will not overwrite or merge existing repo policy/
+  );
+  assert.equal(await readFile(path.join(repoDir, '.gitrole'), 'utf8'), existingPolicy);
 });
 
 test('cli doctor --json includes repo policy state when .gitrole allows the effective role', async () => {

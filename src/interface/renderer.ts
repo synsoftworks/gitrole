@@ -9,6 +9,7 @@ import type {
   CurrentRoleResult,
   DoctorResult,
   ListRolesResult,
+  PinRepoPolicyResult,
   RemoteUseResult,
   StatusResult,
   UseRoleResult
@@ -124,6 +125,15 @@ export function renderRemoteUse(result: RemoteUseResult): string {
     `${chalk.green('updated remote')} ${chalk.bold('origin')} ${chalk.dim(`for ${result.role.name}`)}`,
     formatDetail('from', result.previousUrl),
     formatDetail('to', result.nextUrl)
+  ].join('\n');
+}
+
+export function renderPinnedRepoPolicy(result: PinRepoPolicyResult): string {
+  return [
+    `${chalk.green('pinned role')} ${chalk.bold(result.role.name)}`,
+    formatDetail('file', '.gitrole'),
+    formatDetail('default', result.repoPolicy.defaultRole),
+    formatDetail('allowed', result.repoPolicy.allowedRoles.join(', '))
   ].join('\n');
 }
 
