@@ -12,26 +12,21 @@
 
 ## Release Checklist
 
-1. Update `package.json` to the intended version.
-2. Run `npm run test:release`.
-3. Run `npm pack --dry-run`.
-4. Run `npm run docs:build`.
-5. Merge the release-ready change to `main`.
-6. Wait for CI on the current `main` tip to finish green, then create the release tag from that exact commit:
-
-   ```bash
-   git checkout main
-   git pull --ff-only
-   git tag -a vX.Y.Z -m "vX.Y.Z"
-   git push origin vX.Y.Z
-   ```
-
-7. Publish the package to npm using the existing publishing flow.
-8. Create the GitHub Release for `vX.Y.Z`.
-9. Verify the release externally:
+1. Merge conventional-commit changes to `main`.
+2. Let Release Please open or update the release PR.
+3. Review the release PR contents:
+   - `package.json` and `package-lock.json` version bump
+   - generated changelog/release notes
+   - green CI
+4. Merge the release PR to `main`.
+5. Let Release Please create the `vX.Y.Z` tag and corresponding GitHub Release from that merged `main` commit.
+6. Let `.github/workflows/publish.yml` publish the package to npm from the published GitHub Release.
+7. Verify the release externally:
    - `npm view gitrole version`
    - confirm the GitHub Release exists for `vX.Y.Z`
    - confirm the docs site is live at `https://docs.gitrole.dev`
+
+Manual version bumps and hand-cut release tags should no longer be the default path. If Release Please is unavailable, follow the same invariants manually: cut the version on `main`, tag the merged `main` commit with `vX.Y.Z`, and publish only after the GitHub Release is created.
 
 ## GitHub Release Notes Template
 
@@ -78,5 +73,6 @@ Keep the notes focused on externally meaningful changes. Pull request bodies are
 
 ## Safe Automation
 
+- The repository includes `.github/workflows/release-please.yml` to manage the release PR, release tag, and GitHub Release for the root npm package. It should use a GitHub App token generated from `RELEASE_PLEASE_APP_ID` and `RELEASE_PLEASE_APP_PRIVATE_KEY`; the default `GITHUB_TOKEN` is not sufficient because tags and releases created with it will not trigger `.github/workflows/publish.yml`.
 - The repository includes a tag-validation workflow for release tags. It validates version alignment and runs the release-confidence checks, but it does not publish to npm or create a GitHub Release automatically.
 - The repository also includes `.github/workflows/publish.yml` for npm Trusted Publishing. When npm Trusted Publishing is configured for this repository and workflow filename, a published GitHub Release can publish the tagged version to npm without an npm token.
