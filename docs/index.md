@@ -30,11 +30,6 @@ If you move between work, personal, freelance, or client repositories, it is eas
     <h3>Too much Git config switching</h3>
     <p>You keep editing <code>user.name</code>, <code>user.email</code>, or remotes by hand every time you change codebases.</p>
   </div>
-  <div class="surface">
-    <span class="eyebrow-inline">What gitrole does</span>
-    <h3>One small workflow</h3>
-    <p>Save a role, switch the repo to it, then run a quick check before you commit or push.</p>
-  </div>
 </div>
 
 <h2 id="workflow">How it works</h2>
@@ -94,8 +89,6 @@ Make this distinction early:
   </div>
 </div>
 
-> `gitrole` warns on violated expectations, not assumptions. `githubUser` checks SSH auth, `githubHost` checks the remote host, and remote owner/repository is context by default.
-
 <h2 id="install">Install</h2>
 
 Install comes after understanding, not before:
@@ -106,32 +99,9 @@ npm install -g gitrole
 
 Then create your first role and run the three-command example above.
 
-<h2 id="command-surface">Command quick reference</h2>
+<h2 id="keep-reading">Keep reading</h2>
 
-The current command surface is small:
-
-<dl class="command-list">
-  <dt><code>gitrole resolve</code></dt>
-  <dd>Print the repo-local default role from <code>.gitrole</code>.</dd>
-  <dt><code>gitrole use &lt;name&gt; [--global | --local]</code></dt>
-  <dd>Apply a saved role globally or to the current repository.</dd>
-  <dt><code>gitrole current</code></dt>
-  <dd>Show the effective identity right now.</dd>
-  <dt><code>gitrole status</code></dt>
-  <dd>Show the fast human-readable alignment check.</dd>
-  <dt><code>gitrole status --short</code></dt>
-  <dd>Show the one-line machine-friendly alignment check.</dd>
-  <dt><code>gitrole doctor</code></dt>
-  <dd>Explain identity, remote, and SSH auth alignment in more detail.</dd>
-  <dt><code>gitrole doctor --json</code></dt>
-  <dd>Return the full diagnostic result as JSON.</dd>
-  <dt><code>gitrole remote set &lt;name&gt;</code></dt>
-  <dd>Rewrite <code>origin</code> to the saved role's GitHub SSH host alias.</dd>
-</dl>
-
-<h2 id="keep-reading">Guides and use cases</h2>
-
-Use the guide when you want the standard setup. Use a use case when you already know the basic workflow and need help with one specific problem.
+Use the main guide when you want the normal setup. Use a focused page when you need help with one specific problem.
 
 <div class="link-grid">
   <a class="reference-card" href="{{ '/guides/use-the-right-git-identity-for-this-repo/' | url }}">
@@ -162,33 +132,4 @@ Use the guide when you want the standard setup. Use a use case when you already 
     </div>
     <span aria-hidden="true">&rarr;</span>
   </a>
-  <a class="reference-card" href="{{ '/use-cases/give-an-agent-its-own-git-identity/' | url }}">
-    <div>
-      <strong>Use case: Give an agent its own Git identity</strong>
-      <span>Keep automated commits and pushes separate from human identities.</span>
-    </div>
-    <span aria-hidden="true">&rarr;</span>
-  </a>
 </div>
-
-<h2 id="repo-policy">Repo-local identity policy</h2>
-
-If a repository has a root-level <code>.gitrole</code> file, <code>gitrole</code> can
-tell you which role is preferred there and which roles are still allowed.
-
-```json
-{
-  "version": 1,
-  "defaultRole": "company-main",
-  "allowedRoles": ["company-main", "maintainer-personal"]
-}
-```
-
-Use <code>gitrole resolve</code> when you want the repo's preferred role:
-
-```bash
-gitrole resolve
-```
-
-This is repo-local identity policy, not full workflow management. It does not
-auto-switch roles, install hooks, or block commits.

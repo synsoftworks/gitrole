@@ -42,7 +42,7 @@
     <div class="docs-shell">
       <aside class="sidebar" id="docs-sidebar" aria-label="Site navigation">
         <div class="sidebar-group">
-          <p class="sidebar-label">Overview</p>
+          <p class="sidebar-label">Start here</p>
           <a href="{{ '/' | url }}" {% if page.url == '/' %}aria-current="page"{% endif %}>
             What gitrole does
           </a>
@@ -64,6 +64,13 @@
               {{ entry.data.title }}
             </a>
           {% endfor %}
+        </div>
+
+        <div class="sidebar-group">
+          <p class="sidebar-label">Reference</p>
+          <a href="{{ '/commands/' | url }}" {% if page.url == '/commands/' %}aria-current="page"{% endif %}>
+            Commands
+          </a>
         </div>
 
         <div class="sidebar-group">

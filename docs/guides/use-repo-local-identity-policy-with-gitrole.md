@@ -2,7 +2,7 @@
 layout: layouts/base.njk
 title: Use repo-local identity policy with .gitrole
 eyebrow: Guide
-summary: Teach a repository which roles belong there, show the preferred role, and let status and doctor explain whether the current role fits the repo.
+summary: Declare the preferred and allowed Git roles for a repository.
 order: 2
 ---
 
@@ -50,7 +50,7 @@ Example:
 company-main
 ```
 
-If no <code>.gitrole</code> file exists, <code>resolve</code> fails clearly, and <code>status</code> and <code>doctor</code> behave as normal.
+If no <code>.gitrole</code> file exists, <code>resolve</code> fails clearly, and <code>status</code> and <code>doctor</code> continue to behave normally.
 
 <h2 id="how-status-and-doctor-use-policy">How status and doctor use policy</h2>
 
@@ -88,8 +88,7 @@ repo policy  allowed role maintainer-personal (default: company-main)
 Example doctor interpretation:
 
 - remote and SSH auth can still be correct
-- the repo can still be aligned
-- policy is surfaced as <code>info</code>, not <code>warn</code>
+- policy is surfaced as <code>info</code>, not <code>warn</code>, because the current role is allowed even though it is not the default
 
 <h2 id="when-to-use-it">When to use it</h2>
 
