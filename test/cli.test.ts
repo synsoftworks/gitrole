@@ -940,6 +940,8 @@ process.exit(1);
 
   assert.equal(result.status, 0);
   assert.match(result.stdout, /switched to\s+work/);
+  assert.match(result.stdout, /commit\s+Alex Developer <alex@work\.example>/);
+  assert.match(result.stdout, /push\s+acme-dev via github\.com-acme-dev/);
   assert.match(result.stdout, /repo note:\s+alignment issues detected/);
   assert.match(result.stdout, /run:\s+gitrole status/);
   assert.equal(result.stderr, '');
@@ -1098,9 +1100,11 @@ process.exit(1);
 
   assert.equal(result.status, 2);
   assert.match(result.stdout, /no matching role/);
-  assert.match(result.stdout, /global/);
+  assert.match(result.stdout, /commit\s+Pat Person <pat@personal\.example>/);
+  assert.match(result.stdout, /push\s+acme-dev via github\.com-acme-dev/);
+  assert.match(result.stdout, /scope\s+global/);
   assert.match(result.stdout, /warning/);
-  assert.match(result.stdout, /last non-merge commit  Pat Person <pat@personal.example> — chore: previous personal commit/);
+  assert.doesNotMatch(result.stdout, /history\s+last non-merge commit used/);
   assert.equal(result.stderr, '');
 });
 
@@ -1316,14 +1320,14 @@ process.exit(1);
   });
 
   assert.equal(result.status, 0);
+  assert.match(result.stdout, /^synsoft\s+aligned/m);
+  assert.match(result.stdout, /commit\s+Synthesis Softworks <dev@synthesissoftworks\.com>/);
   assert.match(
     result.stdout,
-    /synsoft\s+Synthesis Softworks <dev@synthesissoftworks.com>\s+local override\s+aligned/
+    /push\s+synsoftworksdev via github\.com-synsoftworksdev/
   );
-  assert.match(
-    result.stdout,
-    /last non-merge commit  Synthesis Softworks <dev@synthesissoftworks.com> — feat: aligned local commit/
-  );
+  assert.match(result.stdout, /scope\s+local override/);
+  assert.doesNotMatch(result.stdout, /history\s+last non-merge commit used/);
   assert.equal(result.stderr, '');
 });
 
@@ -1435,6 +1439,125 @@ process.exit(1);
   assert.match(result.stdout, /remote=ok/);
   assert.match(result.stdout, /auth=ok/);
   assert.match(result.stdout, /overall=aligned/);
+  assert.equal(result.stderr, '');
+});
+
+test('cli status stays aligned when the current identity is correct and only the last commit differs', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-cli-status-history-note-'));
+  const configHome = path.join(tempDir, 'config');
+  const gitStubPath = path.join(tempDir, 'git-stub.mjs');
+  const sshStubPath = path.join(tempDir, 'ssh-stub.mjs');
+
+  await writeFile(
+    gitStubPath,
+    `#!/usr/bin/env node
+const args = process.argv.slice(2);
+if (args[0] === 'config' && args[1] === '--global' && args[2] === '--get' && args[3] === 'user.name') {
+  process.stdout.write('Synthesis Softworks\\n');
+  process.exit(0);
+}
+if (args[0] === 'config' && args[1] === '--global' && args[2] === '--get' && args[3] === 'user.email') {
+  process.stdout.write('dev@synthesissoftworks.com\\n');
+  process.exit(0);
+}
+if (args[0] === 'config' && args[1] === '--local' && args[2] === '--get' && args[3] === 'user.name') {
+  process.stdout.write('synsoftworks\\n');
+  process.exit(0);
+}
+if (args[0] === 'config' && args[1] === '--local' && args[2] === '--get' && args[3] === 'user.email') {
+  process.stdout.write('synthesissoftworks@gmail.com\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args[1] === '--is-inside-work-tree') {
+  process.stdout.write('true\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args[1] === '--verify') {
+  process.stdout.write('abcdef0\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args[1] === '--show-toplevel') {
+  process.stdout.write('${tempDir.replaceAll("'", "'\\''")}\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args.includes('@{upstream}')) {
+  process.stdout.write('origin/main\\n');
+  process.exit(0);
+}
+if (args[0] === 'branch' && args[1] === '--show-current') {
+  process.stdout.write('main\\n');
+  process.exit(0);
+}
+if (args[0] === 'log' && args[1] === '--no-merges') {
+  process.stdout.write('abc123\\u001fsynsoftworks\\u001fsara@synthesissoftworks.com\\u001fdocs: previous account commit\\n');
+  process.exit(0);
+}
+if (args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'origin') {
+  process.stdout.write('git@github.com-synsoftworksdev:synsoftworks/gitrole.git\\n');
+  process.exit(0);
+}
+process.exit(1);
+`,
+    'utf8'
+  );
+  await chmod(gitStubPath, 0o755);
+
+  await writeFile(
+    sshStubPath,
+    `#!/usr/bin/env node
+process.stderr.write("Hi synsoftworksdev! You've successfully authenticated, but GitHub does not provide shell access.\\n");
+process.exit(1);
+`,
+    'utf8'
+  );
+  await chmod(sshStubPath, 0o755);
+
+  await mkdir(path.join(configHome, 'gitrole'), { recursive: true });
+  await writeFile(
+    path.join(configHome, 'gitrole', 'roles.json'),
+    JSON.stringify(
+      {
+        roles: [
+          {
+            name: 'synsoftworksdev',
+            fullName: 'synsoftworks',
+            email: 'synthesissoftworks@gmail.com',
+            githubUser: 'synsoftworksdev',
+            githubHost: 'github.com-synsoftworksdev'
+          }
+        ]
+      },
+      null,
+      2
+    ),
+    'utf8'
+  );
+
+  const env = {
+    ...process.env,
+    HOME: tempDir,
+    XDG_CONFIG_HOME: configHome,
+    GITROLE_GIT_BIN: gitStubPath,
+    GITROLE_SSH_BIN: sshStubPath
+  };
+
+  const result = spawnSync(process.execPath, [cliPath, 'status'], {
+    encoding: 'utf8',
+    env
+  });
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /^synsoftworksdev\s+aligned/m);
+  assert.match(result.stdout, /commit\s+synsoftworks <synthesissoftworks@gmail\.com>/);
+  assert.match(
+    result.stdout,
+    /push\s+synsoftworksdev via github\.com-synsoftworksdev/
+  );
+  assert.match(result.stdout, /scope\s+local override/);
+  assert.match(
+    result.stdout,
+    /history\s+last non-merge commit used synsoftworks <sara@synthesissoftworks\.com>/
+  );
   assert.equal(result.stderr, '');
 });
 

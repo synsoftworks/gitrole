@@ -100,24 +100,29 @@ async function verifyAlignedPersonaScenario(scenario: PersonaScenario): Promise<
   const currentResult = runCli(workspace, ['current']);
   mustSucceed(currentResult, `${scenario.title}: gitrole current failed`);
   assert.match(currentResult.stdout, new RegExp(`current role\\s+${escapeRegex(scenario.role.name)}`));
-  assert.match(currentResult.stdout, new RegExp(`name\\s+${escapeRegex(scenario.role.fullName)}`));
-  assert.match(currentResult.stdout, new RegExp(`email\\s+${escapeRegex(scenario.role.email)}`));
-  assert.match(currentResult.stdout, new RegExp(`gh\\s+${escapeRegex(githubUser)}`));
-  assert.match(currentResult.stdout, new RegExp(`host\\s+${escapeRegex(githubHost)}`));
+  assert.match(
+    currentResult.stdout,
+    new RegExp(`commit\\s+${escapeRegex(`${scenario.role.fullName} <${scenario.role.email}>`)}`)
+  );
+  assert.match(
+    currentResult.stdout,
+    new RegExp(`push\\s+${escapeRegex(`${githubUser} via ${githubHost}`)}`)
+  );
 
   const statusResult = runCli(workspace, ['status']);
   mustSucceed(statusResult, `${scenario.title}: gitrole status failed`);
+  assert.match(statusResult.stdout, new RegExp(`^${escapeRegex(scenario.role.name)}\\s+aligned`, 'm'));
   assert.match(
     statusResult.stdout,
-    new RegExp(
-      `${escapeRegex(scenario.role.name)}\\s+${escapeRegex(`${scenario.role.fullName} <${scenario.role.email}>`)}\\s+${escapeRegex(
-        scenario.scope === 'local' ? 'local override' : 'global'
-      )}\\s+aligned`
-    )
+    new RegExp(`commit\\s+${escapeRegex(`${scenario.role.fullName} <${scenario.role.email}>`)}`)
   );
   assert.match(
     statusResult.stdout,
-    new RegExp(`last non-merge commit\\s+${escapeRegex(`${scenario.role.fullName} <${scenario.role.email}>`)}`)
+    new RegExp(`push\\s+${escapeRegex(`${githubUser} via ${githubHost}`)}`)
+  );
+  assert.match(
+    statusResult.stdout,
+    new RegExp(`scope\\s+${escapeRegex(scenario.scope === 'local' ? 'local override' : 'global')}`)
   );
   assert.match(statusResult.stdout, new RegExp(escapeRegex(scenario.commitMessage)));
   assert.doesNotMatch(statusResult.stdout, /\bwarning\b/);
@@ -145,6 +150,10 @@ async function verifyAlignedPersonaScenario(scenario: PersonaScenario): Promise<
   assert.match(
     doctorResult.stdout,
     new RegExp(`rrepo\\s+${escapeRegex(`${scenario.remoteOwner}/${scenario.remoteRepository}`)}`)
+  );
+  assert.match(
+    doctorResult.stdout,
+    new RegExp(`push\\s+${escapeRegex(`${githubUser} via ${githubHost}`)}`)
   );
   assert.match(
     doctorResult.stdout,

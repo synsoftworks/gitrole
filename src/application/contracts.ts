@@ -114,9 +114,11 @@ export interface RemoteUseResult {
 export interface StatusResult {
   roleName: string;
   commitIdentity?: string;
+  pushAuth?: string;
   scope: EffectiveConfigScope;
   localOverride: boolean;
   lastNonMergeCommit?: NonMergeCommit;
+  historyNote?: string;
   overall: 'aligned' | 'warning';
   commit: 'ok' | 'warn' | 'na';
   remote: 'ok' | 'warn' | 'na';
