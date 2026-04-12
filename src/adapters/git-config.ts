@@ -1,3 +1,6 @@
+/*
+ * Wraps global git config reads and writes behind an adapter-friendly interface.
+ */
 import { execFile as nodeExecFile } from 'node:child_process';
 import { promisify } from 'node:util';
 

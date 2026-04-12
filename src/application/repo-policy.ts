@@ -1,3 +1,6 @@
+/*
+ * Loads and evaluates the repository-local .gitrole policy file.
+ */
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 

@@ -1,3 +1,6 @@
+/*
+ * Exercises the CLI surface, help text, and process behavior end to end.
+ */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { chmod, mkdir, mkdtemp, readFile, symlink, writeFile } from 'node:fs/promises';

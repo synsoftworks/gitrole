@@ -1,3 +1,6 @@
+/*
+ * Verifies the packaged CLI artifact can build and run from a clean workspace.
+ */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';

@@ -1,3 +1,6 @@
+/*
+ * Probes SSH authentication output to identify the GitHub account behind a host alias.
+ */
 import { execFile as nodeExecFile } from 'node:child_process';
 import { promisify } from 'node:util';
 

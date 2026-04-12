@@ -1,3 +1,6 @@
+/*
+ * Persists named roles to the user's config directory as normalized JSON data.
+ */
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';

@@ -1,3 +1,6 @@
+/*
+ * Exercises representative end-to-end CLI workflows in hermetic repositories.
+ */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

@@ -1,3 +1,6 @@
+/*
+ * Collects the shared application contracts and result shapes used across gitrole.
+ */
 import type { GitIdentity, Role } from '../domain/role.js';
 import type { RemoteInfo, RemoteProtocol } from '../adapters/git-repository.js';
 
@@ -31,6 +34,7 @@ export type EffectiveConfigScope = UseScope | 'mixed' | 'unset';
 /**
  * Describes where the effective commit identity is coming from.
  *
+ * @remarks
  * `effective` reports the aggregate source for the current name/email pair.
  * `hasLocalOverride` is true when either field is currently sourced from
  * repository-local config.

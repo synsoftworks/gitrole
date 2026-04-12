@@ -1,3 +1,6 @@
+/*
+ * Provides hermetic helpers for CLI end-to-end tests and fixture repositories.
+ */
 import assert from 'node:assert/strict';
 import { chmod, mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import os from 'node:os';

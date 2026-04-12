@@ -1,3 +1,6 @@
+/*
+ * Implements repository diagnosis and post-switch alignment checks.
+ */
 import { matchesIdentity, type Role } from '../../domain/role.js';
 import {
   getDoctorOverall,
@@ -13,7 +16,9 @@ import { evaluateRepoPolicy, loadOptionalRepoPolicy } from '../repo-policy.js';
 /**
  * Diagnoses the active commit identity and push path for the current repository.
  *
+ * @remarks
  * This use case answers two practical questions:
+ *
  * 1. Who will this commit say it is from?
  * 2. Who will GitHub think I am when I push over SSH?
  */

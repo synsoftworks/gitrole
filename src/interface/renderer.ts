@@ -1,3 +1,6 @@
+/*
+ * Renders human-readable CLI output for saved roles, status, and diagnosis results.
+ */
 import os from 'node:os';
 
 import chalk from 'chalk';

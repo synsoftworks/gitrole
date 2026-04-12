@@ -1,3 +1,6 @@
+/*
+ * Verifies SSH probe parsing and error handling for GitHub auth detection.
+ */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

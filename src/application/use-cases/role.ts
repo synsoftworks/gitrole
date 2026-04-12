@@ -1,3 +1,6 @@
+/*
+ * Implements role creation, activation, lookup, and removal workflows.
+ */
 import { matchesIdentity, normalizeRole, type Role } from '../../domain/role.js';
 import {
   type AppDependencies,
@@ -34,6 +37,7 @@ export class NotInGitRepositoryError extends Error {
 /**
  * Creates or updates a saved role definition.
  *
+ * @remarks
  * The role is normalized before storage so whitespace does not produce duplicate
  * or surprising values in the persisted config.
  */
@@ -49,16 +53,20 @@ export async function addRole(
 }
 
 /**
- * Applies the selected role to global Git config and optionally loads its SSH key.
+ * Applies the selected role to Git config and optionally loads its SSH key.
  *
+ * @remarks
  * Git identity changes are the primary operation. SSH key loading is a best-effort
  * follow-up and does not block a successful switch when `ssh-add` fails.
  *
  * When `scope` is `local`, the selected role is applied to the current repository
  * only. Without a scope option, the existing global behavior is preserved.
  *
- * @throws {ProfileNotFoundError} When the named role does not exist.
- * @throws {NotInGitRepositoryError} When `scope` is `local` outside a Git repository.
+ * @throws
+ * {@link ProfileNotFoundError} when the named role does not exist.
+ *
+ * @throws
+ * {@link NotInGitRepositoryError} when `scope` is `local` outside a Git repository.
  */
 export async function useRole(
   dependencies: UseRoleDependencies,
@@ -122,6 +130,7 @@ async function assessRoleAlignmentSafely(
  * Reads the effective Git identity for the current context and resolves it to a
  * saved role when both name and email match exactly.
  *
+ * @remarks
  * When repository-local overrides are available, they take precedence over the
  * global identity because they are what Git will actually use for commits in
  * the current repository.
@@ -166,7 +175,8 @@ export async function listRoles(
 /**
  * Deletes a saved role definition without changing the active Git config.
  *
- * @throws {ProfileNotFoundError} When the named role does not exist.
+ * @throws
+ * {@link ProfileNotFoundError} when the named role does not exist.
  */
 export async function removeRole(
   dependencies: AppDependencies,
