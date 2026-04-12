@@ -45,6 +45,13 @@ gitrole --help
 - Keep CLI output concise and script-friendly: success to stdout, warnings/errors to stderr.
 - Use plain text output only. Do not introduce interactive prompts or TUIs.
 
+## Branch Hygiene
+
+- Use PRs to merge into `main`; avoid direct pushes to the long-lived branch.
+- Delete merged topic branches when the work is complete.
+- Keep branch names short, readable, and scoped to the work being done.
+- Follow [RELEASING.md](./RELEASING.md) for release tags, GitHub Releases, and release validation.
+
 ## Pull Request Checklist
 
 - The change is documented when user-facing behavior changes.

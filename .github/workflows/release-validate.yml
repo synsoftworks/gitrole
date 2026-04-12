@@ -1,0 +1,47 @@
+name: Release Validation
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate Release Tag
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify tag matches package version
+        run: |
+          TAG_NAME="${GITHUB_REF_NAME}"
+          PACKAGE_VERSION="$(node -p "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).version")"
+
+          if [ "$TAG_NAME" != "v$PACKAGE_VERSION" ]; then
+            echo "release tag $TAG_NAME does not match package version $PACKAGE_VERSION" >&2
+            exit 1
+          fi
+
+      - name: Run release-confidence suite
+        run: npm run test:release
+
+      - name: Build docs
+        run: npm run docs:build
