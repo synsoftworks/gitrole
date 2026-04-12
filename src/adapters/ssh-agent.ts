@@ -1,3 +1,6 @@
+/*
+ * Loads SSH keys through ssh-add and normalizes home-directory path expansion.
+ */
 import { execFile as nodeExecFile } from 'node:child_process';
 import os from 'node:os';
 import { promisify } from 'node:util';

@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+/*
+ * Defines the gitrole CLI commands and wires them to the application layer.
+ */
 import { readFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -66,6 +69,7 @@ const output: Output = {
 /**
  * Creates the concrete runtime dependencies used by the CLI.
  *
+ * @remarks
  * The dependency boundary keeps the command layer small and makes the
  * application behavior testable without touching the real filesystem,
  * Git config, or SSH agent.
@@ -372,6 +376,7 @@ function getPackageVersion(): string {
 /**
  * Runs the CLI against the provided argv vector and returns a process exit code.
  *
+ * @remarks
  * Success paths return `0`. Operational failures print a user-facing error to
  * stderr and return `1`.
  */

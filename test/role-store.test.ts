@@ -1,3 +1,6 @@
+/*
+ * Verifies role persistence, normalization, and config-path resolution behavior.
+ */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, readdir } from 'node:fs/promises';

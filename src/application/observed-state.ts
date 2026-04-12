@@ -1,3 +1,6 @@
+/*
+ * Captures the current git, repository, and SSH observations used by diagnosis flows.
+ */
 import type {
   DiagnosedValue,
   DoctorDependencies,

@@ -1,3 +1,6 @@
+/*
+ * Covers repository policy loading, validation, and evaluation behavior.
+ */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';

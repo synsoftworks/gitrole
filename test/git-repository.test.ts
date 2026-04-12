@@ -1,3 +1,6 @@
+/*
+ * Verifies remote parsing and repository command behavior in the git adapter.
+ */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

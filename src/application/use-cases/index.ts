@@ -1,3 +1,6 @@
+/*
+ * Re-exports the CLI-facing application use cases and domain errors.
+ */
 export * from './diagnosis.js';
 export * from './remote.js';
 export * from './resolve.js';

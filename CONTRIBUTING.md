@@ -36,6 +36,12 @@ gitrole --help
 - Prefer explicit interfaces and small adapters over implicit shell behavior.
 - Preserve backwards compatibility for existing commands unless a breaking change is intentional and documented.
 - Add or update tests for behavior changes.
+- Add a short top-of-file summary comment to each new TypeScript file.
+- Add TSDoc comments to new exported APIs that are part of the public or broadly reused surface.
+- For tests, keep the file summary and add comments only where setup or fixtures are non-obvious.
+- For internal modules, prefer lightweight intent comments over full API docs unless the module is reused heavily.
+- Comments should explain intent and behavior, not restate the syntax that readers can already see.
+- When using TSDoc, avoid JSDoc-only patterns such as `@throws {Type}`.
 - Keep CLI output concise and script-friendly: success to stdout, warnings/errors to stderr.
 - Use plain text output only. Do not introduce interactive prompts or TUIs.
 

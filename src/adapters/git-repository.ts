@@ -1,3 +1,6 @@
+/*
+ * Wraps repository-level git commands and parses remote metadata for higher layers.
+ */
 import { execFile as nodeExecFile } from 'node:child_process';
 import { promisify } from 'node:util';
 

@@ -1,3 +1,6 @@
+/*
+ * Rewrites repository remotes to match the selected role's GitHub SSH host.
+ */
 import { type RemoteUseDependencies, type RemoteUseResult } from '../contracts.js';
 import { ProfileNotFoundError } from './role.js';
 
@@ -26,10 +29,17 @@ export class UnsupportedRemoteRewriteError extends Error {
  * Rewrites the `origin` remote to use the selected role's SSH host alias while
  * preserving the observed repository owner and name.
  *
- * @throws {ProfileNotFoundError} When the named role does not exist.
- * @throws {RoleMissingGithubHostError} When the role does not define a GitHub host alias.
- * @throws {OriginRemoteNotConfiguredError} When the repository has no `origin`.
- * @throws {UnsupportedRemoteRewriteError} When the current remote cannot be parsed.
+ * @throws
+ * {@link ProfileNotFoundError} when the named role does not exist.
+ *
+ * @throws
+ * {@link RoleMissingGithubHostError} when the role does not define a GitHub host alias.
+ *
+ * @throws
+ * {@link OriginRemoteNotConfiguredError} when the repository has no `origin`.
+ *
+ * @throws
+ * {@link UnsupportedRemoteRewriteError} when the current remote cannot be parsed.
  */
 export async function useRemoteForRole(
   dependencies: RemoteUseDependencies,

@@ -1,3 +1,6 @@
+/*
+ * Verifies the global git config adapter against success and failure cases.
+ */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

@@ -1,3 +1,6 @@
+/*
+ * Maps doctor results to the CLI exit codes exposed by the binary.
+ */
 import type { DoctorResult } from '../application/contracts.js';
 
 export function getDoctorExitCode(result: Pick<DoctorResult, 'checks'>): number {

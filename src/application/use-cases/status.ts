@@ -1,3 +1,6 @@
+/*
+ * Produces the compact status summary shown by the CLI.
+ */
 import type {
   DoctorDependencies,
   DoctorResult,

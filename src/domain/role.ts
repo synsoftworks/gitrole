@@ -1,3 +1,6 @@
+/*
+ * Defines the role model and identity matching helpers used across gitrole.
+ */
 export interface Role {
   name: string;
   fullName: string;

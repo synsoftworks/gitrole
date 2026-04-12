@@ -1,3 +1,6 @@
+/*
+ * Covers the application use cases that coordinate roles, status, and diagnosis.
+ */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, writeFile } from 'node:fs/promises';

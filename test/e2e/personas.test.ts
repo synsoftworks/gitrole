@@ -1,3 +1,6 @@
+/*
+ * Exercises multi-persona repository workflows that depend on saved role switching.
+ */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
