@@ -2,7 +2,7 @@
 layout: layouts/base.njk
 title: Give an agent its own Git identity
 eyebrow: Use case
-summary: Create a dedicated role, SSH key, and GitHub host alias for an agent so automated commits and pushes stay separate from human identities.
+summary: Create a dedicated Git identity role, SSH key, and GitHub host alias for an agent so automated commits and pushes stay separate from human identities.
 order: 3
 ---
 

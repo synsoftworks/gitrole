@@ -1,8 +1,8 @@
 ---
 layout: layouts/base.njk
-title: Use gitrole as an identity preflight for agents and automation
+title: Use gitrole as a Git identity preflight for agents and automation
 eyebrow: Use case
-summary: Check repository identity state before an agent commits or pushes under an existing work, personal, or client role.
+summary: Check Git identity state before an agent commits or pushes by using status --short, doctor --json, and resolve --json in automation.
 order: 2
 ---
 

@@ -1,11 +1,13 @@
 ---
 layout: layouts/base.njk
-title: Commands
+title: gitrole Commands Reference
 eyebrow: Reference
-summary: Reference for the current gitrole command surface and what each command is for.
+summary: Reference for gitrole CLI commands for saved roles, Git identity switching, SSH push alignment, diagnosis, and repo-local policy.
 ---
 
 <h2 id="command-list">Command list</h2>
+
+<p>For the public machine-readable output contracts, see <a href="{{ '/machine-readable-contracts/' | url }}">Machine Readable Contracts</a>.</p>
 
 <dl class="command-list">
   <dt><code>gitrole add &lt;name&gt; --name "..." --email "..." [--ssh ...] [--github-user ...] [--github-host ...]</code></dt>
