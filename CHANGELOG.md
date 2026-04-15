@@ -7,6 +7,13 @@
 * role names are now restricted to lowercase letters, numbers, `_`, and `-` so machine-readable output like `gitrole status --short` stays stable
 * existing saved roles with names outside that policy, such as `client acme`, `Work`, or `prod/main`, now fail clearly and should be renamed or recreated with a contract-safe name
 
+## [0.7.4](https://github.com/synsoftworks/gitrole/compare/v0.7.3...v0.7.4) (2026-04-15)
+
+
+### Bug Fixes
+
+* restore npm package metadata to org repository ([#49](https://github.com/synsoftworks/gitrole/issues/49)) ([9170aaf](https://github.com/synsoftworks/gitrole/commit/9170aaf2b1d53b6f70313101053038c7619e9248))
+
 ## [0.7.3](https://github.com/synsoftworks/gitrole/compare/v0.7.2...v0.7.3) (2026-04-15)
 
 
