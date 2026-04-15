@@ -22,6 +22,7 @@ import {
   useRole
 } from '../src/application/use-cases/index.js';
 import type { AppDependencies, DoctorDependencies } from '../src/application/contracts.js';
+import { summarizeAlignment } from '../src/application/alignment.js';
 import { RepoPolicyAlreadyExistsError } from '../src/application/repo-policy.js';
 import { parseRemoteUrl } from '../src/adapters/git-repository.js';
 import { InvalidRoleNameError, type Role } from '../src/domain/role.js';
@@ -1700,6 +1701,90 @@ test('status warns when the effective role is not allowed by repo policy', async
   assert.equal(result.overall, 'warning');
   assert.equal(status.repoPolicy?.status, 'notAllowed');
   assert.equal(status.overall, 'warning');
+});
+
+test('status summary evaluation derives warnings from observed state, not diagnosis labels', () => {
+  const role: Role = {
+    name: 'synsoftworksdev',
+    fullName: 'synsoftworks',
+    email: 'synthesissoftworks@gmail.com',
+    githubUser: 'synsoftworksdev',
+    githubHost: 'github.com-synsoftworksdev'
+  };
+
+  const summary = summarizeAlignment({
+    role,
+    observedState: {
+      commitIdentity: {
+        fullName: { value: role.fullName, source: 'local' },
+        email: { value: role.email, source: 'local' }
+      },
+      configuredIdentity: {
+        local: { fullName: role.fullName, email: role.email },
+        global: {}
+      },
+      scope: {
+        effective: 'local',
+        hasLocalOverride: true
+      },
+      repository: {
+        isInsideWorkTree: true,
+        hasCommits: true,
+        remote: parseRemoteUrl(
+          'origin',
+          'git@github.com-saraeloop:synsoftworksdev/gitrole.git'
+        )
+      },
+      sshAuth: {
+        ok: true,
+        host: 'github.com-saraeloop',
+        githubUser: 'saraeloop'
+      }
+    }
+  });
+
+  assert.deepEqual(summary, {
+    overall: 'warning',
+    commit: 'warn',
+    remote: 'warn',
+    auth: 'warn'
+  });
+});
+
+test('status summary evaluation warns outside a git repository without relying on doctor checks', () => {
+  const role: Role = {
+    name: 'work',
+    fullName: 'Alex Developer',
+    email: 'alex@work.example'
+  };
+
+  const summary = summarizeAlignment({
+    role,
+    observedState: {
+      commitIdentity: {
+        fullName: { value: role.fullName, source: 'global' },
+        email: { value: role.email, source: 'global' }
+      },
+      configuredIdentity: {
+        local: {},
+        global: { fullName: role.fullName, email: role.email }
+      },
+      scope: {
+        effective: 'global',
+        hasLocalOverride: false
+      },
+      repository: {
+        isInsideWorkTree: false
+      }
+    }
+  });
+
+  assert.deepEqual(summary, {
+    overall: 'warning',
+    commit: 'ok',
+    remote: 'na',
+    auth: 'na'
+  });
 });
 
 test('doctor warns when HTTPS remotes prevent SSH auth verification', async () => {
