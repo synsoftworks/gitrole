@@ -1,6 +1,7 @@
 /*
  * Rewrites repository remotes to match the selected role's GitHub SSH host.
  */
+import { validateRoleName } from '../../domain/role.js';
 import { type RemoteUseDependencies, type RemoteUseResult } from '../contracts.js';
 import { ProfileNotFoundError } from './role.js';
 
@@ -45,14 +46,15 @@ export async function useRemoteForRole(
   dependencies: RemoteUseDependencies,
   name: string
 ): Promise<RemoteUseResult> {
-  const role = await dependencies.roleStore.get(name);
+  const roleName = validateRoleName(name);
+  const role = await dependencies.roleStore.get(roleName);
 
   if (!role) {
-    throw new ProfileNotFoundError(name);
+    throw new ProfileNotFoundError(roleName);
   }
 
   if (!role.githubHost) {
-    throw new RoleMissingGithubHostError(name);
+    throw new RoleMissingGithubHostError(roleName);
   }
 
   const previousUrl = await dependencies.repository.getOriginUrl();

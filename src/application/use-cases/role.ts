@@ -1,7 +1,12 @@
 /*
  * Implements role creation, activation, lookup, and removal workflows.
  */
-import { matchesIdentity, normalizeRole, type Role } from '../../domain/role.js';
+import {
+  matchesIdentity,
+  normalizeRole,
+  validateRoleName,
+  type Role
+} from '../../domain/role.js';
 import {
   type AppDependencies,
   type CurrentRoleDependencies,
@@ -81,11 +86,12 @@ export async function useRole(
   name: string,
   options: UseRoleOptions = {}
 ): Promise<UseRoleResult> {
-  const role = await dependencies.roleStore.get(name);
+  const roleName = validateRoleName(name);
+  const role = await dependencies.roleStore.get(roleName);
   const scope = options.scope ?? 'global';
 
   if (!role) {
-    throw new ProfileNotFoundError(name);
+    throw new ProfileNotFoundError(roleName);
   }
 
   if (scope === 'local') {
@@ -178,6 +184,7 @@ export async function importCurrentRole(
   dependencies: CurrentRoleDependencies,
   name: string
 ): Promise<ImportCurrentRoleResult> {
+  const roleName = validateRoleName(name);
   const currentIdentity = await getEffectiveCurrentIdentity(dependencies);
 
   if (!currentIdentity.fullName || !currentIdentity.email) {
@@ -185,7 +192,7 @@ export async function importCurrentRole(
   }
 
   const role = await addRole(dependencies, {
-    name,
+    name: roleName,
     fullName: currentIdentity.fullName,
     email: currentIdentity.email
   });
@@ -246,13 +253,14 @@ export async function removeRole(
   dependencies: AppDependencies,
   name: string
 ): Promise<Role> {
-  const role = await dependencies.roleStore.get(name);
+  const roleName = validateRoleName(name);
+  const role = await dependencies.roleStore.get(roleName);
 
   if (!role) {
-    throw new ProfileNotFoundError(name);
+    throw new ProfileNotFoundError(roleName);
   }
 
-  await dependencies.roleStore.remove(name);
+  await dependencies.roleStore.remove(roleName);
 
   return role;
 }

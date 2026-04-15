@@ -1,6 +1,7 @@
 /*
  * Creates a strict repo-local .gitrole policy for the current repository.
  */
+import { validateRoleName } from '../../domain/role.js';
 import type { PinRepoPolicyDependencies, PinRepoPolicyResult } from '../contracts.js';
 import { saveRepoPolicy } from '../repo-policy.js';
 import { ProfileNotFoundError } from './role.js';
@@ -29,10 +30,11 @@ export async function pinRepoPolicy(
   dependencies: PinRepoPolicyDependencies,
   name: string
 ): Promise<PinRepoPolicyResult> {
-  const role = await dependencies.roleStore.get(name);
+  const roleName = validateRoleName(name);
+  const role = await dependencies.roleStore.get(roleName);
 
   if (!role) {
-    throw new ProfileNotFoundError(name);
+    throw new ProfileNotFoundError(roleName);
   }
 
   if (!(await dependencies.repository.isInsideWorkTree())) {

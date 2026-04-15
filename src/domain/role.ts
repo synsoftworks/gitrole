@@ -15,6 +15,23 @@ export interface GitIdentity {
   email?: string;
 }
 
+const roleNamePattern = /^[a-z0-9_-]+$/;
+
+export class InvalidRoleNameError extends Error {
+  constructor(input: string) {
+    super(`invalid role name "${input}"; use lowercase letters, numbers, "-" or "_"`);
+    this.name = 'InvalidRoleNameError';
+  }
+}
+
+export function validateRoleName(input: string): string {
+  if (!input || input.trim() !== input || !roleNamePattern.test(input)) {
+    throw new InvalidRoleNameError(input);
+  }
+
+  return input;
+}
+
 /**
  * Normalizes persisted role input so comparisons and storage stay stable.
  *
@@ -22,7 +39,7 @@ export interface GitIdentity {
  */
 export function normalizeRole(input: Role): Role {
   return {
-    name: input.name.trim(),
+    name: validateRoleName(input.name),
     fullName: input.fullName.trim(),
     email: input.email.trim(),
     sshKeyPath: input.sshKeyPath?.trim() || undefined,
