@@ -10,8 +10,6 @@ order: 1
 
 Use this guide if you are new to <code>gitrole</code> and want one clear setup flow for a repository.
 
-If the repository also needs an explicit policy for which roles are preferred or allowed, continue with <a href="{{ '/guides/use-repo-local-identity-policy-with-gitrole/' | url }}">Use repo-local identity policy with .gitrole</a> after this setup works.
-
 By the end, you will know how to:
 
 - save a role
@@ -171,3 +169,5 @@ Think of <code>gitrole</code> as four small checks in order:
 4. if something looks wrong, run <code>gitrole doctor</code> and possibly <code>gitrole remote set &lt;role&gt;</code>
 
 That is the basic workflow for a new user.
+
+If the repository also needs an explicit policy for which roles are preferred or allowed, continue with <a href="{{ '/guides/use-repo-local-identity-policy-with-gitrole/' | url }}">Use repo-local identity policy with .gitrole</a> after this setup works.
