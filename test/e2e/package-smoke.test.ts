@@ -64,7 +64,7 @@ test('package smoke: npm pack includes the published CLI entrypoint and metadata
   assert.equal(packedManifest.name, packageJson.name);
   assert.equal(packedManifest.version, packageJson.version);
   assert.deepEqual(packedManifest.bin, {
-    gitrole: './dist/cli/index.js'
+    gitrole: 'dist/cli/index.js'
   });
 });
 

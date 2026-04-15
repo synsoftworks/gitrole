@@ -4,7 +4,7 @@
   "description": "Switch your full git identity in one command.",
   "type": "module",
   "bin": {
-    "gitrole": "./dist/cli/index.js"
+    "gitrole": "dist/cli/index.js"
   },
   "files": [
     "dist"
@@ -38,11 +38,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/synsoftworks/gitrole.git"
+    "url": "git+https://github.com/synsoftworksdev/gitrole.git"
   },
   "homepage": "https://docs.gitrole.dev",
   "bugs": {
-    "url": "https://github.com/synsoftworks/gitrole/issues"
+    "url": "https://github.com/synsoftworksdev/gitrole/issues"
   },
   "dependencies": {
     "chalk": "^5.4.1",
