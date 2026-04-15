@@ -208,6 +208,71 @@ test('cli import current fails when the current identity is incomplete', async (
   );
 });
 
+test('cli add rejects invalid role names with a clear error', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-cli-add-invalid-role-'));
+  const configHome = path.join(tempDir, 'config');
+  const env = {
+    ...process.env,
+    HOME: tempDir,
+    XDG_CONFIG_HOME: configHome
+  };
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      cliPath,
+      'add',
+      'client acme',
+      '--name',
+      'Alex Developer',
+      '--email',
+      'alex@work.example'
+    ],
+    {
+      encoding: 'utf8',
+      env
+    }
+  );
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  assert.match(
+    result.stderr,
+    /error: invalid role name "client acme"; use lowercase letters, numbers, "-" or "_"/
+  );
+});
+
+test('cli import current rejects invalid role names with the same clear error', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-cli-import-invalid-role-'));
+  const configHome = path.join(tempDir, 'config');
+  const repoDir = await initRealRepo('gitrole-cli-import-invalid-role-repo-');
+  const env = {
+    ...process.env,
+    HOME: tempDir,
+    XDG_CONFIG_HOME: configHome
+  };
+
+  runGit(['config', '--global', 'user.name', 'Alex Developer'], repoDir, env);
+  runGit(['config', '--global', 'user.email', 'alex@work.example'], repoDir, env);
+
+  const result = spawnSync(
+    process.execPath,
+    [cliPath, 'import', 'current', '--name', 'client acme'],
+    {
+      cwd: repoDir,
+      encoding: 'utf8',
+      env
+    }
+  );
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  assert.match(
+    result.stderr,
+    /error: invalid role name "client acme"; use lowercase letters, numbers, "-" or "_"/
+  );
+});
+
 test('cli import current fails clearly when git is unavailable', () => {
   const env = {
     ...process.env,
@@ -1753,6 +1818,205 @@ process.exit(1);
   assert.match(result.stdout, /auth=ok/);
   assert.match(result.stdout, /overall=aligned/);
   assert.equal(result.stderr, '');
+});
+
+test('cli status --short preserves contract-safe role names like agent_bot', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-cli-status-short-agent-bot-'));
+  const configHome = path.join(tempDir, 'config');
+  const gitStubPath = path.join(tempDir, 'git-stub.mjs');
+  const sshStubPath = path.join(tempDir, 'ssh-stub.mjs');
+
+  await writeFile(
+    gitStubPath,
+    `#!/usr/bin/env node
+const args = process.argv.slice(2);
+if (args[0] === 'config' && args[1] === '--global' && args[2] === '--get' && args[3] === 'user.name') {
+  process.stdout.write('Acme Build Agent\\n');
+  process.exit(0);
+}
+if (args[0] === 'config' && args[1] === '--global' && args[2] === '--get' && args[3] === 'user.email') {
+  process.stdout.write('build-agent@acme.example\\n');
+  process.exit(0);
+}
+if (args[0] === 'config' && args[1] === '--local' && args[2] === '--get') {
+  process.exit(1);
+}
+if (args[0] === 'rev-parse' && args[1] === '--is-inside-work-tree') {
+  process.stdout.write('true\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args[1] === '--verify') {
+  process.stdout.write('abcdef0\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args[1] === '--show-toplevel') {
+  process.stdout.write('${tempDir.replaceAll("'", "'\\''")}\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args.includes('@{upstream}')) {
+  process.stdout.write('origin/main\\n');
+  process.exit(0);
+}
+if (args[0] === 'branch' && args[1] === '--show-current') {
+  process.stdout.write('main\\n');
+  process.exit(0);
+}
+if (args[0] === 'log' && args[1] === '--no-merges') {
+  process.stdout.write('abc123\\u001fAcme Build Agent\\u001fbuild-agent@acme.example\\u001fchore: aligned agent history\\n');
+  process.exit(0);
+}
+if (args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'origin') {
+  process.stdout.write('git@github.com-agent-bot:acme/service.git\\n');
+  process.exit(0);
+}
+process.exit(1);
+`,
+    'utf8'
+  );
+  await chmod(gitStubPath, 0o755);
+
+  await writeFile(
+    sshStubPath,
+    `#!/usr/bin/env node
+process.stderr.write("Hi acme-build-agent! You've successfully authenticated, but GitHub does not provide shell access.\\n");
+process.exit(1);
+`,
+    'utf8'
+  );
+  await chmod(sshStubPath, 0o755);
+
+  await mkdir(path.join(configHome, 'gitrole'), { recursive: true });
+  await writeFile(
+    path.join(configHome, 'gitrole', 'roles.json'),
+    JSON.stringify(
+      {
+        roles: [
+          {
+            name: 'agent_bot',
+            fullName: 'Acme Build Agent',
+            email: 'build-agent@acme.example',
+            githubUser: 'acme-build-agent',
+            githubHost: 'github.com-agent-bot'
+          }
+        ]
+      },
+      null,
+      2
+    ),
+    'utf8'
+  );
+
+  const env = {
+    ...process.env,
+    HOME: tempDir,
+    XDG_CONFIG_HOME: configHome,
+    GITROLE_GIT_BIN: gitStubPath,
+    GITROLE_SSH_BIN: sshStubPath
+  };
+
+  const result = spawnSync(process.execPath, [cliPath, 'status', '--short'], {
+    encoding: 'utf8',
+    env
+  });
+
+  assert.equal(result.status, 0);
+  assert.equal(
+    result.stdout.trim(),
+    'role=agent_bot scope=global override=false commit=ok remote=ok auth=ok overall=aligned'
+  );
+  assert.equal(result.stderr, '');
+});
+
+test('cli status --short fails clearly when stored role data contains an invalid role name', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-cli-status-short-invalid-role-'));
+  const configHome = path.join(tempDir, 'config');
+  const gitStubPath = path.join(tempDir, 'git-stub.mjs');
+
+  await writeFile(
+    gitStubPath,
+    `#!/usr/bin/env node
+const args = process.argv.slice(2);
+if (args[0] === 'config' && args[1] === '--global' && args[2] === '--get' && args[3] === 'user.name') {
+  process.stdout.write('Alex Developer\\n');
+  process.exit(0);
+}
+if (args[0] === 'config' && args[1] === '--global' && args[2] === '--get' && args[3] === 'user.email') {
+  process.stdout.write('alex@work.example\\n');
+  process.exit(0);
+}
+if (args[0] === 'config' && args[1] === '--local' && args[2] === '--get') {
+  process.exit(1);
+}
+if (args[0] === 'rev-parse' && args[1] === '--is-inside-work-tree') {
+  process.stdout.write('true\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args[1] === '--verify') {
+  process.stdout.write('abcdef0\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args[1] === '--show-toplevel') {
+  process.stdout.write('${tempDir.replaceAll("'", "'\\''")}\\n');
+  process.exit(0);
+}
+if (args[0] === 'rev-parse' && args.includes('@{upstream}')) {
+  process.stdout.write('origin/main\\n');
+  process.exit(0);
+}
+if (args[0] === 'branch' && args[1] === '--show-current') {
+  process.stdout.write('main\\n');
+  process.exit(0);
+}
+if (args[0] === 'log' && args[1] === '--no-merges') {
+  process.stdout.write('abc123\\u001fAlex Developer\\u001falex@work.example\\u001ffeat: aligned history\\n');
+  process.exit(0);
+}
+if (args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'origin') {
+  process.stdout.write('git@github.com-acme-dev:acme-dev/gitrole.git\\n');
+  process.exit(0);
+}
+process.exit(1);
+`,
+    'utf8'
+  );
+  await chmod(gitStubPath, 0o755);
+  await mkdir(path.join(configHome, 'gitrole'), { recursive: true });
+  await writeFile(
+    path.join(configHome, 'gitrole', 'roles.json'),
+    JSON.stringify(
+      {
+        roles: [
+          {
+            name: 'client acme',
+            fullName: 'Alex Developer',
+            email: 'alex@work.example'
+          }
+        ]
+      },
+      null,
+      2
+    ),
+    'utf8'
+  );
+
+  const env = {
+    ...process.env,
+    HOME: tempDir,
+    XDG_CONFIG_HOME: configHome,
+    GITROLE_GIT_BIN: gitStubPath
+  };
+
+  const result = spawnSync(process.execPath, [cliPath, 'status', '--short'], {
+    encoding: 'utf8',
+    env
+  });
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  assert.match(
+    result.stderr,
+    /error: invalid role name "client acme"; use lowercase letters, numbers, "-" or "_"/
+  );
 });
 
 test('cli status stays aligned when the current identity is correct and only the last commit differs', async () => {

@@ -8,6 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import {
+  addRole,
   doctor,
   getCurrentRole,
   getStatus,
@@ -16,13 +17,14 @@ import {
   NotInGitRepositoryError,
   pinRepoPolicy,
   PinRepoPolicyRepositoryContextError,
+  removeRole,
   useRemoteForRole,
   useRole
 } from '../src/application/use-cases/index.js';
 import type { AppDependencies, DoctorDependencies } from '../src/application/contracts.js';
 import { RepoPolicyAlreadyExistsError } from '../src/application/repo-policy.js';
 import { parseRemoteUrl } from '../src/adapters/git-repository.js';
-import type { Role } from '../src/domain/role.js';
+import { InvalidRoleNameError, type Role } from '../src/domain/role.js';
 
 function getOriginRemote(url?: string) {
   return url ? parseRemoteUrl('origin', url) : undefined;
@@ -201,6 +203,80 @@ test('use-role applies the selected git identity', async () => {
   assert.deepEqual(calls.localNames, []);
   assert.deepEqual(calls.localEmails, []);
   assert.deepEqual(calls.ssh, ['/tmp/id_sara']);
+});
+
+test('add-role accepts contract-safe role names', async () => {
+  const saved: Role[] = [];
+  const dependencies: AppDependencies = {
+    roleStore: {
+      async list() {
+        return saved;
+      },
+      async get(name: string) {
+        return saved.find((role) => role.name === name);
+      },
+      async save(role: Role) {
+        saved.push(role);
+      },
+      async remove() {
+        return true;
+      }
+    },
+    gitConfig: {
+      async getGlobalUserName() {
+        return undefined;
+      },
+      async getGlobalUserEmail() {
+        return undefined;
+      },
+      async setGlobalUserName() {
+        return undefined;
+      },
+      async setGlobalUserEmail() {
+        return undefined;
+      }
+    },
+    sshAgent: {
+      async loadKey() {
+        return { ok: true };
+      }
+    }
+  };
+
+  for (const name of ['work', 'client-acme', 'agent_bot']) {
+    const role = await addRole(dependencies, {
+      name,
+      fullName: 'Alex Developer',
+      email: 'alex@work.example'
+    });
+
+    assert.equal(role.name, name);
+  }
+
+  assert.deepEqual(
+    saved.map((role) => role.name),
+    ['work', 'client-acme', 'agent_bot']
+  );
+});
+
+test('add-role rejects invalid role names', async () => {
+  const { dependencies } = createDependencies({
+    name: 'work',
+    fullName: 'Alex Developer',
+    email: 'alex@work.example'
+  });
+
+  for (const name of ['client acme', 'work/main', 'my@role', '', ' work', 'work ', 'role:prod']) {
+    await assert.rejects(
+      () =>
+        addRole(dependencies, {
+          name,
+          fullName: 'Alex Developer',
+          email: 'alex@work.example'
+        }),
+      InvalidRoleNameError
+    );
+  }
 });
 
 test('use-role succeeds when post-switch alignment assessment throws', async () => {
@@ -605,6 +681,141 @@ test('import current fails when the current identity is incomplete', async () =>
         'work'
       ),
     IncompleteCurrentIdentityError
+  );
+});
+
+test('import current rejects invalid role names before saving', async () => {
+  await assert.rejects(
+    () =>
+      importCurrentRole(
+        {
+          roleStore: {
+            async list() {
+              return [];
+            },
+            async get() {
+              return undefined;
+            },
+            async save() {
+              return undefined;
+            },
+            async remove() {
+              return true;
+            }
+          },
+          gitConfig: {
+            async getGlobalUserName() {
+              return 'Alex Developer';
+            },
+            async getGlobalUserEmail() {
+              return 'alex@work.example';
+            },
+            async setGlobalUserName() {
+              return undefined;
+            },
+            async setGlobalUserEmail() {
+              return undefined;
+            }
+          },
+          sshAgent: {
+            async loadKey() {
+              return { ok: true };
+            }
+          },
+          repository: {
+            async getLocalUserName() {
+              return undefined;
+            },
+            async getLocalUserEmail() {
+              return undefined;
+            }
+          }
+        },
+        'client acme'
+      ),
+    InvalidRoleNameError
+  );
+});
+
+test('role-referencing commands reject invalid role names consistently', async () => {
+  const role: Role = {
+    name: 'work',
+    fullName: 'Alex Developer',
+    email: 'alex@work.example',
+    githubHost: 'github.com-work'
+  };
+  const { dependencies } = createDependencies(role);
+
+  await assert.rejects(() => useRole(dependencies, 'client acme'), InvalidRoleNameError);
+  await assert.rejects(() => removeRole(dependencies, 'client acme'), InvalidRoleNameError);
+  await assert.rejects(
+    () =>
+      pinRepoPolicy(
+        {
+          roleStore: dependencies.roleStore,
+          repository: {
+            async isInsideWorkTree() {
+              return true;
+            },
+            async getTopLevelPath() {
+              return '/tmp/gitrole';
+            }
+          }
+        },
+        'client acme'
+      ),
+    InvalidRoleNameError
+  );
+  await assert.rejects(
+    () =>
+      useRemoteForRole(
+        {
+          roleStore: dependencies.roleStore,
+          repository: {
+            async isInsideWorkTree() {
+              return true;
+            },
+            async hasCommits() {
+              return true;
+            },
+            async getLatestNonMergeCommit() {
+              return undefined;
+            },
+            async getTopLevelPath() {
+              return '/tmp/gitrole';
+            },
+            async getCurrentBranch() {
+              return 'main';
+            },
+            async getUpstreamBranch() {
+              return 'origin/main';
+            },
+            async getOriginUrl() {
+              return 'git@github.com-work:acme/service.git';
+            },
+            async getOriginRemote() {
+              return getOriginRemote('git@github.com-work:acme/service.git');
+            },
+            async setOriginUrl() {
+              return undefined;
+            },
+            async getLocalUserName() {
+              return undefined;
+            },
+            async getLocalUserEmail() {
+              return undefined;
+            },
+            async setLocalUserName() {
+              return undefined;
+            },
+            async setLocalUserEmail() {
+              return undefined;
+            }
+          }
+        },
+        'client acme'
+      ),
+    InvalidRoleNameError
   );
 });
 
