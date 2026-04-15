@@ -1,7 +1,8 @@
 /*
  * Implements repository diagnosis and post-switch alignment checks.
  */
-import { matchesIdentity, type Role } from '../../domain/role.js';
+import type { Role } from '../../domain/role.js';
+import { findMatchingRole } from '../alignment.js';
 import {
   getDoctorOverall,
   DoctorCheck,
@@ -30,12 +31,7 @@ export async function doctor(
     collectObservedState(dependencies),
     loadOptionalRepoPolicy(dependencies.repository)
   ]);
-  const role = roles.find((candidate) =>
-    matchesIdentity(candidate, {
-      fullName: observedState.commitIdentity.fullName.value,
-      email: observedState.commitIdentity.email.value
-    })
-  );
+  const role = findMatchingRole(roles, observedState.commitIdentity);
   const evaluatedRepoPolicy = repoPolicy ? evaluateRepoPolicy(repoPolicy, role?.name) : undefined;
   const checks = buildDoctorChecks({
     role,

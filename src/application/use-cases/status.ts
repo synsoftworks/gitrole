@@ -1,13 +1,10 @@
 /*
  * Produces the compact status summary shown by the CLI.
  */
-import type {
-  DoctorDependencies,
-  DoctorResult,
-  NonMergeCommit,
-  StatusResult
-} from '../contracts.js';
-import { doctor } from './diagnosis.js';
+import { findMatchingRole, summarizeAlignment } from '../alignment.js';
+import type { DoctorDependencies, DoctorResult, NonMergeCommit, StatusResult } from '../contracts.js';
+import { collectObservedState, type ObservedState } from '../observed-state.js';
+import { evaluateRepoPolicy, loadOptionalRepoPolicy } from '../repo-policy.js';
 
 /**
  * Returns a compact alignment summary for the current environment.
@@ -15,37 +12,52 @@ import { doctor } from './diagnosis.js';
 export async function getStatus(
   dependencies: DoctorDependencies
 ): Promise<StatusResult> {
-  const verification = await collectVerificationContext(dependencies);
-  const { doctorResult, lastNonMergeCommit } = verification;
-  const commitIdentity = formatCommitIdentity(doctorResult.commitIdentity);
+  const verification = await collectStatusContext(dependencies);
+  const { observedState, role, repoPolicy, lastNonMergeCommit } = verification;
+  const commitIdentity = formatCommitIdentity(observedState.commitIdentity);
+  const summary = summarizeAlignment({
+    role,
+    observedState,
+    repoPolicy
+  });
 
   return {
-    roleName: doctorResult.role?.name ?? 'no-role',
+    roleName: role?.name ?? 'no-role',
     commitIdentity,
-    pushAuth: formatPushAuth(doctorResult),
-    scope: doctorResult.scope.effective,
-    localOverride: doctorResult.scope.hasLocalOverride,
+    pushAuth: formatPushAuth(role, observedState),
+    scope: observedState.scope.effective,
+    localOverride: observedState.scope.hasLocalOverride,
     lastNonMergeCommit,
-    historyNote: formatHistoryNote(doctorResult, lastNonMergeCommit),
-    overall: doctorResult.overall === 'warning' ? 'warning' : 'aligned',
-    commit: getCheckGroupStatus(doctorResult.checks, ['role', 'commit', 'identity', 'fix', 'scope']),
-    remote: getRemoteStatus(doctorResult),
-    auth: getAuthStatus(doctorResult),
-    repoPolicy: doctorResult.repoPolicy
+    historyNote: formatHistoryNote(observedState.commitIdentity, lastNonMergeCommit),
+    overall: summary.overall,
+    commit: summary.commit,
+    remote: summary.remote,
+    auth: summary.auth,
+    repoPolicy
   };
 }
 
-async function collectVerificationContext(
+async function collectStatusContext(
   dependencies: DoctorDependencies
 ): Promise<{
-  doctorResult: DoctorResult;
+  observedState: ObservedState;
+  role?: DoctorResult['role'];
+  repoPolicy?: StatusResult['repoPolicy'];
   lastNonMergeCommit?: NonMergeCommit;
 }> {
-  const doctorResult = await doctor(dependencies);
-  const lastNonMergeCommit = await dependencies.repository.getLatestNonMergeCommit();
+  const [roles, observedState, repoPolicySource, lastNonMergeCommit] = await Promise.all([
+    dependencies.roleStore.list(),
+    collectObservedState(dependencies),
+    loadOptionalRepoPolicy(dependencies.repository),
+    dependencies.repository.getLatestNonMergeCommit()
+  ]);
+  const role = findMatchingRole(roles, observedState.commitIdentity);
+  const repoPolicy = repoPolicySource ? evaluateRepoPolicy(repoPolicySource, role?.name) : undefined;
 
   return {
-    doctorResult,
+    observedState,
+    role,
+    repoPolicy,
     lastNonMergeCommit
   };
 }
@@ -58,86 +70,49 @@ function formatCommitIdentity(identity: DoctorResult['commitIdentity']): string 
   return `${identity.fullName.value} <${identity.email.value}>`;
 }
 
-function formatPushAuth(result: DoctorResult): string | undefined {
-  if (result.sshAuth?.githubUser) {
-    return `${result.sshAuth.githubUser} via ${result.sshAuth.host}`;
+function formatPushAuth(
+  role: DoctorResult['role'],
+  observedState: {
+    repository: DoctorResult['repository'];
+    sshAuth?: DoctorResult['sshAuth'];
+  }
+): string | undefined {
+  if (observedState.sshAuth?.githubUser) {
+    return `${observedState.sshAuth.githubUser} via ${observedState.sshAuth.host}`;
   }
 
-  if (result.repository.remote?.protocol === 'https') {
+  if (observedState.repository.remote?.protocol === 'https') {
     return 'unverified (origin uses HTTPS)';
   }
 
-  if (result.role?.githubUser && result.role?.githubHost) {
-    return `${result.role.githubUser} via ${result.role.githubHost}`;
+  if (role?.githubUser && role?.githubHost) {
+    return `${role.githubUser} via ${role.githubHost}`;
   }
 
-  if (result.role?.githubUser) {
-    return result.role.githubUser;
+  if (role?.githubUser) {
+    return role.githubUser;
   }
 
-  if (result.role?.githubHost) {
-    return result.role.githubHost;
+  if (role?.githubHost) {
+    return role.githubHost;
   }
 
   return undefined;
 }
 
-function getCheckGroupStatus(
-  checks: DoctorResult['checks'],
-  labels: string[]
-): 'ok' | 'warn' | 'na' {
-  const relevantChecks = checks.filter((check) => labels.includes(check.label));
-
-  if (relevantChecks.length === 0) {
-    return 'na';
-  }
-
-  return relevantChecks.some((check) => check.status === 'warn') ? 'warn' : 'ok';
-}
-
-function getRemoteStatus(result: DoctorResult): 'ok' | 'warn' | 'na' {
-  if (!result.repository.isInsideWorkTree) {
-    return 'na';
-  }
-
-  if (!result.repository.remote) {
-    return 'warn';
-  }
-
-  return getCheckGroupStatus(result.checks, ['repo', 'remote', 'host', 'owner', 'history']);
-}
-
-function getAuthStatus(result: DoctorResult): 'ok' | 'warn' | 'na' {
-  if (!result.repository.isInsideWorkTree || !result.repository.remote) {
-    return 'na';
-  }
-
-  if (result.repository.remote.protocol === 'https') {
-    return 'warn';
-  }
-
-  if (!result.sshAuth || !result.sshAuth.ok) {
-    return 'warn';
-  }
-
-  return result.checks.some((check) => check.label === 'auth' && check.status === 'warn')
-    ? 'warn'
-    : 'ok';
-}
-
 function formatHistoryNote(
-  doctorResult: DoctorResult,
+  commitIdentity: DoctorResult['commitIdentity'],
   lastNonMergeCommit?: NonMergeCommit
 ): string | undefined {
-  const effectiveIdentity = formatCommitIdentity(doctorResult.commitIdentity);
+  const effectiveIdentity = formatCommitIdentity(commitIdentity);
 
   if (!effectiveIdentity || !lastNonMergeCommit) {
     return undefined;
   }
 
   const isMismatch =
-    doctorResult.commitIdentity.fullName.value !== lastNonMergeCommit.authorName ||
-    doctorResult.commitIdentity.email.value !== lastNonMergeCommit.authorEmail;
+    commitIdentity.fullName.value !== lastNonMergeCommit.authorName ||
+    commitIdentity.email.value !== lastNonMergeCommit.authorEmail;
 
   if (!isMismatch) {
     return undefined;
