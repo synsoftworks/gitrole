@@ -2,13 +2,15 @@
 layout: layouts/base.njk
 title: Use gitrole as an identity preflight for agents and automation
 eyebrow: Use case
-summary: Use gitrole to check repository identity state before an agent commits or pushes, especially when the agent should act under an existing work, personal, or client role.
+summary: Check repository identity state before an agent commits or pushes under an existing work, personal, or client role.
 order: 2
 ---
 
 <h2 id="when-to-use-this">When to use this</h2>
 
 Use this page when an agent or automation should work under an existing role instead of using its own dedicated Git identity.
+
+If you need the baseline one-repo setup first, start with <a href="{{ '/guides/use-the-right-git-identity-for-this-repo/' | url }}">Use the right Git identity for this repo</a>.
 
 This is useful when:
 
@@ -80,3 +82,5 @@ Use the dedicated agent identity flow when the automation should have its own:
 - host alias
 
 That is a different setup, and it belongs in <a href="{{ '/use-cases/give-an-agent-its-own-git-identity/' | url }}">Give an agent its own Git identity</a>.
+
+If the repository should also declare which roles are preferred or allowed, pair this flow with <a href="{{ '/guides/use-repo-local-identity-policy-with-gitrole/' | url }}">Use repo-local identity policy with .gitrole</a>.

@@ -1,0 +1,73 @@
+{% set pageTitle = site.title %}
+{% if title %}
+  {% set pageTitle = title + ' - ' + site.title %}
+{% endif %}
+
+{% set pageDescription = site.description %}
+{% if summary %}
+  {% set pageDescription = summary %}
+{% endif %}
+{% if description %}
+  {% set pageDescription = description %}
+{% endif %}
+
+{% set canonicalUrl = (page.url or '/') | absoluteUrl %}
+{% if canonical %}
+  {% set canonicalUrl = canonical | absoluteUrl %}
+{% endif %}
+
+{% set pageOgTitle = title or site.title %}
+{% if ogTitle %}
+  {% set pageOgTitle = ogTitle %}
+{% endif %}
+
+{% set pageOgDescription = pageDescription %}
+{% if ogDescription %}
+  {% set pageOgDescription = ogDescription %}
+{% endif %}
+
+{% set pageOgType = 'article' %}
+{% if page.url == '/' %}
+  {% set pageOgType = 'website' %}
+{% endif %}
+{% if ogType %}
+  {% set pageOgType = ogType %}
+{% endif %}
+
+{% set pageSocialImageUrl = '' %}
+{% if site.socialImage %}
+  {% set pageSocialImageUrl = site.socialImage | absoluteUrl %}
+{% endif %}
+{% if socialImage %}
+  {% set pageSocialImageUrl = socialImage | absoluteUrl %}
+{% endif %}
+
+<title>{{ pageTitle }}</title>
+{% if pageDescription %}
+  <meta name="description" content="{{ pageDescription }}" />
+{% endif %}
+<link rel="canonical" href="{{ canonicalUrl }}" />
+
+{% if pageOgTitle %}
+  <meta property="og:title" content="{{ pageOgTitle }}" />
+{% endif %}
+{% if pageOgDescription %}
+  <meta property="og:description" content="{{ pageOgDescription }}" />
+{% endif %}
+<meta property="og:type" content="{{ pageOgType }}" />
+<meta property="og:url" content="{{ canonicalUrl }}" />
+<meta property="og:site_name" content="{{ site.name }}" />
+{% if pageSocialImageUrl %}
+  <meta property="og:image" content="{{ pageSocialImageUrl }}" />
+{% endif %}
+
+<meta name="twitter:card" content="{{ site.twitterCard if pageSocialImageUrl else 'summary' }}" />
+{% if pageOgTitle %}
+  <meta name="twitter:title" content="{{ pageOgTitle }}" />
+{% endif %}
+{% if pageOgDescription %}
+  <meta name="twitter:description" content="{{ pageOgDescription }}" />
+{% endif %}
+{% if pageSocialImageUrl %}
+  <meta name="twitter:image" content="{{ pageSocialImageUrl }}" />
+{% endif %}

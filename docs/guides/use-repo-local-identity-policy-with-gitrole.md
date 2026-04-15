@@ -2,7 +2,7 @@
 layout: layouts/base.njk
 title: Use repo-local identity policy with .gitrole
 eyebrow: Guide
-summary: Declare the preferred and allowed Git roles for a repository.
+summary: Use .gitrole to declare the preferred role for a repository and the short list of roles that are still allowed there.
 order: 2
 ---
 
@@ -14,6 +14,8 @@ Use a root-level <code>.gitrole</code> file when a repository should say:
 - "these roles are still okay here"
 
 This is repo-local identity policy, not workflow automation.
+
+If you have not done the normal role setup yet, start with <a href="{{ '/guides/use-the-right-git-identity-for-this-repo/' | url }}">Use the right Git identity for this repo</a> first. This guide is the next step when a repository should say which roles belong there.
 
 It does not:
 
@@ -154,3 +156,5 @@ Use <code>.gitrole</code> when you want the repo to answer two simple questions:
 
 - what role is preferred here?
 - is the current role allowed here?
+
+If automation should read that policy before it commits or pushes, continue with <a href="{{ '/use-cases/use-gitrole-as-an-identity-preflight-for-agents-and-automation/' | url }}">Use gitrole as an identity preflight for agents and automation</a>.

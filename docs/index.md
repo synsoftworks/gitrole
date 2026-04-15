@@ -2,7 +2,7 @@
 layout: layouts/base.njk
 title: Switch Git identities without guessing
 eyebrow: Overview
-summary: gitrole helps you keep work, personal, and client commits from bleeding into each other. Save a role, switch to it, and check the repo before you commit or push.
+summary: Save Git identities, switch repositories safely, and verify that commits and SSH pushes use the account you expect.
 ---
 
 <div class="button-row">
@@ -71,6 +71,9 @@ What that does:
 3. Shows what this repo will actually use before the next commit
 
 If `status` looks clean, you have the basic setup working.
+
+If you want the full first-time setup, go straight to <a href="{{ '/guides/use-the-right-git-identity-for-this-repo/' | url }}">Use the right Git identity for this repo</a>.
+If pushes still go through the wrong GitHub account, jump to <a href="{{ '/use-cases/fix-pushes-using-the-wrong-github-account/' | url }}">Fix pushes using the wrong GitHub account</a>.
 
 <h2 id="status-vs-doctor">Status vs doctor</h2>
 
