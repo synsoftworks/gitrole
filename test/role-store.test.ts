@@ -3,11 +3,15 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, readdir } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-import { FileRoleStore, resolveRolesFilePath } from '../src/adapters/role-store.js';
+import {
+  FileRoleStore,
+  InvalidSavedRoleDataError,
+  resolveRolesFilePath
+} from '../src/adapters/role-store.js';
 
 test('role store adds, lists, gets, and removes roles', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-role-store-'));
@@ -79,3 +83,63 @@ test('role store resolves the XDG path', () => {
 
   assert.equal(rolesFilePath, '/tmp/config-home/gitrole/roles.json');
 });
+
+test('role store rejects invalid JSON in the persisted roles file', async () => {
+  const store = await createStoreWithRawRolesFile('{not valid json');
+
+  await assert.rejects(() => store.list(), {
+    name: 'InvalidSavedRoleDataError',
+    message: 'saved role data is invalid; fix or recreate the roles file'
+  });
+});
+
+test('role store rejects the wrong top-level shape', async () => {
+  const store = await createStoreWithRawRolesFile(
+    JSON.stringify([{ name: 'work', fullName: 'Alex Developer', email: 'alex@work.example' }])
+  );
+
+  await assert.rejects(() => store.list(), InvalidSavedRoleDataError);
+});
+
+test('role store rejects invalid role entry shapes', async () => {
+  const store = await createStoreWithRawRolesFile(
+    JSON.stringify({
+      roles: [{ name: 'work', fullName: 'Alex Developer' }]
+    })
+  );
+
+  await assert.rejects(() => store.list(), InvalidSavedRoleDataError);
+});
+
+test('role store rejects invalid persisted role names', async () => {
+  const store = await createStoreWithRawRolesFile(
+    JSON.stringify({
+      roles: [{ name: 'client acme', fullName: 'Alex Developer', email: 'alex@work.example' }]
+    })
+  );
+
+  await assert.rejects(() => store.list(), InvalidSavedRoleDataError);
+});
+
+test('role store rejects mixed valid and invalid persisted roles', async () => {
+  const store = await createStoreWithRawRolesFile(
+    JSON.stringify({
+      roles: [
+        { name: 'work', fullName: 'Alex Developer', email: 'alex@work.example' },
+        { name: 'client acme', fullName: 'Pat Person', email: 'pat@example.com' }
+      ]
+    })
+  );
+
+  await assert.rejects(() => store.list(), InvalidSavedRoleDataError);
+});
+
+async function createStoreWithRawRolesFile(raw: string): Promise<FileRoleStore> {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-role-store-invalid-'));
+  const configFilePath = path.join(tempDir, 'gitrole', 'roles.json');
+
+  await mkdir(path.dirname(configFilePath), { recursive: true });
+  await writeFile(configFilePath, raw, 'utf8');
+
+  return new FileRoleStore({ configFilePath });
+}

@@ -11,9 +11,19 @@ interface StoredRoles {
   roles: Role[];
 }
 
+const invalidSavedRoleDataMessage =
+  'saved role data is invalid; fix or recreate the roles file';
+
 export interface RoleStoreOptions {
   configFilePath?: string;
   env?: NodeJS.ProcessEnv;
+}
+
+export class InvalidSavedRoleDataError extends Error {
+  constructor() {
+    super(invalidSavedRoleDataMessage);
+    this.name = 'InvalidSavedRoleDataError';
+  }
 }
 
 export class FileRoleStore {
@@ -70,10 +80,15 @@ export class FileRoleStore {
     await this.ensureFile();
 
     const raw = await readFile(this.configFilePath, 'utf8');
-    const parsed = JSON.parse(raw) as Partial<StoredRoles>;
-    const roles = Array.isArray(parsed.roles) ? parsed.roles.map(normalizeRole) : [];
+    let parsed: unknown;
 
-    return { roles };
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new InvalidSavedRoleDataError();
+    }
+
+    return parseStoredRoles(parsed);
   }
 
   private async writeData(data: StoredRoles): Promise<void> {
@@ -110,4 +125,66 @@ export function resolveRolesFilePath(env: NodeJS.ProcessEnv = process.env): stri
     env.XDG_CONFIG_HOME || path.join(env.HOME || os.homedir(), '.config');
 
   return path.join(configHome, 'gitrole', 'roles.json');
+}
+
+function parseStoredRoles(input: unknown): StoredRoles {
+  if (!isRecord(input) || !Array.isArray(input.roles)) {
+    throw new InvalidSavedRoleDataError();
+  }
+
+  return {
+    roles: input.roles.map((role) => parseStoredRole(role))
+  };
+}
+
+function parseStoredRole(input: unknown): Role {
+  if (!isRecord(input)) {
+    throw new InvalidSavedRoleDataError();
+  }
+
+  const role: Role = {
+    name: readRequiredString(input, 'name'),
+    fullName: readRequiredString(input, 'fullName'),
+    email: readRequiredString(input, 'email'),
+    sshKeyPath: readOptionalString(input, 'sshKeyPath'),
+    githubUser: readOptionalString(input, 'githubUser'),
+    githubHost: readOptionalString(input, 'githubHost')
+  };
+
+  try {
+    return normalizeRole(role);
+  } catch {
+    throw new InvalidSavedRoleDataError();
+  }
+}
+
+function isRecord(input: unknown): input is Record<string, unknown> {
+  return typeof input === 'object' && input !== null && !Array.isArray(input);
+}
+
+function readRequiredString(input: Record<string, unknown>, key: string): string {
+  const value = input[key];
+
+  if (typeof value !== 'string') {
+    throw new InvalidSavedRoleDataError();
+  }
+
+  return value;
+}
+
+function readOptionalString(
+  input: Record<string, unknown>,
+  key: string
+): string | undefined {
+  const value = input[key];
+
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value !== 'string') {
+    throw new InvalidSavedRoleDataError();
+  }
+
+  return value;
 }

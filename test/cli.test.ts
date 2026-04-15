@@ -2015,7 +2015,54 @@ process.exit(1);
   assert.equal(result.stdout, '');
   assert.match(
     result.stderr,
-    /error: invalid role name "client acme"; use lowercase letters, numbers, "-" or "_"/
+    /error: saved role data is invalid; fix or recreate the roles file/
+  );
+});
+
+test('cli list fails clearly and does not silently skip mixed valid and invalid stored roles', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'gitrole-cli-list-invalid-stored-roles-'));
+  const configHome = path.join(tempDir, 'config');
+
+  await mkdir(path.join(configHome, 'gitrole'), { recursive: true });
+  await writeFile(
+    path.join(configHome, 'gitrole', 'roles.json'),
+    JSON.stringify(
+      {
+        roles: [
+          {
+            name: 'work',
+            fullName: 'Alex Developer',
+            email: 'alex@work.example'
+          },
+          {
+            name: 'client acme',
+            fullName: 'Pat Person',
+            email: 'pat@example.com'
+          }
+        ]
+      },
+      null,
+      2
+    ),
+    'utf8'
+  );
+
+  const env = {
+    ...process.env,
+    HOME: tempDir,
+    XDG_CONFIG_HOME: configHome
+  };
+
+  const result = spawnSync(process.execPath, [cliPath, 'list'], {
+    encoding: 'utf8',
+    env
+  });
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  assert.match(
+    result.stderr,
+    /error: saved role data is invalid; fix or recreate the roles file/
   );
 });
 
