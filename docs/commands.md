@@ -2,7 +2,7 @@
 layout: layouts/base.njk
 title: Commands
 eyebrow: Reference
-summary: The current gitrole command surface, with the short purpose of each command.
+summary: Reference for the current gitrole command surface and what each command is for.
 ---
 
 <h2 id="command-list">Command list</h2>

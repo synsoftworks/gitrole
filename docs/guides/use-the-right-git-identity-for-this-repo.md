@@ -2,13 +2,15 @@
 layout: layouts/base.njk
 title: Use the right Git identity for this repo
 eyebrow: Guide
-summary: Set up one role, switch this repository to it, and check that commits and pushes will use the account you expect.
+summary: Save one role, switch this repository to it, and verify that commits and pushes use the account you expect.
 order: 1
 ---
 
 <h2 id="what-this-guide-does">What this guide does</h2>
 
 Use this guide if you are new to <code>gitrole</code> and want one clear setup flow for a repository.
+
+If the repository also needs an explicit policy for which roles are preferred or allowed, continue with <a href="{{ '/guides/use-repo-local-identity-policy-with-gitrole/' | url }}">Use repo-local identity policy with .gitrole</a> after this setup works.
 
 By the end, you will know how to:
 
@@ -129,6 +131,8 @@ Then run the checks again:
 gitrole status
 gitrole doctor
 ```
+
+If you want the full wrong-account walkthrough, use <a href="{{ '/use-cases/fix-pushes-using-the-wrong-github-account/' | url }}">Fix pushes using the wrong GitHub account</a>.
 
 <h2 id="why-status-can-still-mention-the-old-identity">Why status can still mention the old identity</h2>
 

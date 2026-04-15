@@ -1,9 +1,15 @@
+/*
+ * Defines shared docs-site metadata defaults and project links.
+ */
 export default {
-  title: 'gitrole Docs',
+  title: 'gitrole',
   productName: 'gitrole',
-  tagline: 'Use the right Git identity for the repo you are in.',
+  name: 'gitrole',
+  url: 'https://docs.gitrole.dev',
   description:
-    'gitrole helps developers switch between work, personal, and client Git identities without wrong-author commits or wrong-account pushes.',
+    'Switch Git identities without guessing. Save named roles, switch repositories safely, and verify commit and push alignment before you commit or push.',
+  socialImage: '/assets/gitrole-black.png',
   repositoryUrl: 'https://github.com/synsoftworks/gitrole',
-  npmUrl: 'https://www.npmjs.com/package/gitrole'
+  npmUrl: 'https://www.npmjs.com/package/gitrole',
+  twitterCard: 'summary_large_image'
 };

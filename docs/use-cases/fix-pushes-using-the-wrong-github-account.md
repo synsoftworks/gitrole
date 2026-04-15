@@ -2,13 +2,15 @@
 layout: layouts/base.njk
 title: Fix pushes using the wrong GitHub account
 eyebrow: Use case
-summary: Use this when commits look fine but SSH pushes still authenticate as the wrong GitHub account.
+summary: Diagnose and fix repositories where commit identity looks right but SSH pushes still authenticate as the wrong GitHub account.
 order: 1
 ---
 
 <h2 id="when-to-use-this">When to use this</h2>
 
 Use this page when the repo identity looks right locally, but pushes still go through the wrong GitHub account.
+
+If you still need the baseline role setup, go back to <a href="{{ '/guides/use-the-right-git-identity-for-this-repo/' | url }}">Use the right Git identity for this repo</a> first.
 
 Common signs:
 
@@ -79,3 +81,5 @@ gitrole doctor
 ```
 
 Use `status` for the quick daily check. Use `doctor` again if you need to confirm that the remote host and SSH account now match the selected role.
+
+If the repository also has a preferred-role policy, see <a href="{{ '/guides/use-repo-local-identity-policy-with-gitrole/' | url }}">Use repo-local identity policy with .gitrole</a> to make that expectation explicit.

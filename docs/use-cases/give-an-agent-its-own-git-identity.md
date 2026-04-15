@@ -2,13 +2,15 @@
 layout: layouts/base.njk
 title: Give an agent its own Git identity
 eyebrow: Use case
-summary: Create a dedicated role for an agent, give it its own SSH key and GitHub host alias, and use gitrole to keep automated commits and pushes separate from human identities.
+summary: Create a dedicated role, SSH key, and GitHub host alias for an agent so automated commits and pushes stay separate from human identities.
 order: 3
 ---
 
 <h2 id="when-to-use-this">When to use this</h2>
 
 Use this page when you want an agent to work with its own Git identity instead of acting as your personal or work account.
+
+If the agent should reuse an existing work, personal, or client role instead, use <a href="{{ '/use-cases/use-gitrole-as-an-identity-preflight-for-agents-and-automation/' | url }}">Use gitrole as an identity preflight for agents and automation</a> instead of this page.
 
 This is useful when you want:
 
@@ -86,3 +88,5 @@ This setup makes automation easier to reason about:
 - repository-local overrides keep the agent identity contained to the repositories that need it
 
 That gives you a cleaner boundary between human work and machine-driven work.
+
+If those repositories also need an explicit preferred-role policy, add <a href="{{ '/guides/use-repo-local-identity-policy-with-gitrole/' | url }}">repo-local identity policy with .gitrole</a> after the agent setup is working.
