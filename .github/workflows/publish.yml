@@ -55,5 +55,35 @@ jobs:
       - name: Dry-run pack
         run: npm pack --dry-run
 
+      - name: Print publish metadata
+        run: |
+          PACKAGE_NAME="$(node -p "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).name")"
+          PACKAGE_VERSION="$(node -p "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).version")"
+          REPOSITORY_URL="$(node -p "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).repository.url")"
+
+          echo "package name: $PACKAGE_NAME"
+          echo "package version: $PACKAGE_VERSION"
+          echo "repository.url: $REPOSITORY_URL"
+
+      - name: Check if version is already published
+        id: npm-version
+        run: |
+          PACKAGE_NAME="$(node -p "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).name")"
+          PACKAGE_VERSION="$(node -p "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).version")"
+
+          if npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version >/dev/null 2>&1; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip publish when version already exists
+        if: steps.npm-version.outputs.already_published == 'true'
+        run: |
+          PACKAGE_NAME="$(node -p "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).name")"
+          PACKAGE_VERSION="$(node -p "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).version")"
+          echo "${PACKAGE_NAME}@${PACKAGE_VERSION} is already published on npm; skipping publish"
+
       - name: Publish to npm
+        if: steps.npm-version.outputs.already_published != 'true'
         run: npm publish --provenance --access public
