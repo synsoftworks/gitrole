@@ -2,7 +2,7 @@
 layout: layouts/base.njk
 title: Use the right Git identity for this repo
 eyebrow: Guide
-summary: Save one role, switch this repository to it, and verify that commits and pushes use the account you expect.
+summary: Save a Git identity role, switch a repository to it, and verify that commits and SSH pushes use the expected account.
 order: 1
 ---
 

@@ -287,6 +287,45 @@ pre {
   color: var(--muted);
 }
 
+.doc-content table {
+  width: 100%;
+  margin: 20px 0 24px;
+  border-collapse: collapse;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #ffffff;
+  font-size: 0.96rem;
+}
+
+.doc-content thead {
+  background: rgba(17, 17, 17, 0.04);
+}
+
+.doc-content th,
+.doc-content td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.doc-content th {
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.doc-content td {
+  color: var(--muted-strong);
+}
+
+.doc-content tbody tr:last-child td {
+  border-bottom: 0;
+}
+
 
 /* Grid layouts */
 

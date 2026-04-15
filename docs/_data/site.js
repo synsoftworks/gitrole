@@ -7,7 +7,7 @@ export default {
   name: 'gitrole',
   url: 'https://docs.gitrole.dev',
   description:
-    'Switch Git identities without guessing. Save named roles, switch repositories safely, and verify commit and push alignment before you commit or push.',
+    'gitrole is a Git identity CLI for saved roles, local and global Git user switching, SSH push identity checks, and repo-local identity policy.',
   socialImage: '/assets/gitrole-black.png',
   repositoryUrl: 'https://github.com/synsoftworks/gitrole',
   npmUrl: 'https://www.npmjs.com/package/gitrole',

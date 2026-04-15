@@ -2,7 +2,7 @@
 layout: layouts/base.njk
 title: Use repo-local identity policy with .gitrole
 eyebrow: Guide
-summary: Use .gitrole to declare the preferred role for a repository and the short list of roles that are still allowed there.
+summary: Use .gitrole to declare the preferred Git identity role for a repository and the small set of roles that are allowed there.
 order: 2
 ---
 

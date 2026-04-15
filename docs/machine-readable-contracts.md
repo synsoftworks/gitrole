@@ -31,15 +31,15 @@ role=work scope=local override=true commit=ok remote=ok auth=ok overall=aligned
 
 ### Fields
 
-| Field | What it tells you | Values |
-| --- | --- | --- |
-| `role` | Which saved role matches the current commit identity | role name, or `no-role` |
-| `scope` | Where the commit identity is coming from | `global`, `local`, `mixed`, `unset` |
-| `override` | Whether a repo-local Git config is active | `true`, `false` |
-| `commit` | Commit identity check result | `ok`, `warn`, `na` |
-| `remote` | Remote/repo alignment check result | `ok`, `warn`, `na` |
-| `auth` | SSH push-auth check result | `ok`, `warn`, `na` |
-| `overall` | Summary | `aligned`, `warning` |
+| Field      | What it tells you                                    | Values                              |
+| ---------- | ---------------------------------------------------- | ----------------------------------- |
+| `role`     | Which saved role matches the current commit identity | role name, or `no-role`             |
+| `scope`    | Where the commit identity is coming from             | `global`, `local`, `mixed`, `unset` |
+| `override` | Whether a repo-local Git config is active            | `true`, `false`                     |
+| `commit`   | Commit identity check result                         | `ok`, `warn`, `na`                  |
+| `remote`   | Remote/repo alignment check result                   | `ok`, `warn`, `na`                  |
+| `auth`     | SSH push-auth check result                           | `ok`, `warn`, `na`                  |
+| `overall`  | Summary                                              | `aligned`, `warning`                |
 
 `na` means the check was not applicable. For example, `remote=na` when you are not inside a Git repo.
 
@@ -57,11 +57,11 @@ fi
 
 ### Exit codes
 
-| Code | Meaning |
-| --- | --- |
-| `0` | Aligned - valid output was emitted |
-| `2` | Warning - valid output was emitted, but something is off |
-| `1` | Failure - error written to stderr, no output |
+| Code | Meaning                                                  |
+| ---- | -------------------------------------------------------- |
+| `0`  | Aligned - valid output was emitted                       |
+| `2`  | Warning - valid output was emitted, but something is off |
+| `1`  | Failure - error written to stderr, no output             |
 
 ### What's stable
 
@@ -139,17 +139,17 @@ gitrole doctor --json
 
 ### Top-level fields
 
-| Field | What it tells you |
-| --- | --- |
-| `role` | The saved role that matches the current commit identity. Omitted if no role matches. |
-| `overall` | `aligned` or `warning` |
-| `commitIdentity` | Effective name and email, plus where each is coming from: `local`, `global`, or `unset` |
-| `configuredIdentity` | Raw local and global Git config values |
-| `scope` | Aggregate view of where the commit identity comes from |
-| `repository` | Repo context, branch, and parsed remote info |
-| `sshAuth` | SSH probe result. Omitted if no SSH probe was run. |
-| `repoPolicy` | `.gitrole` policy evaluation. Omitted if no policy file exists. |
-| `checks` | Ordered list of individual check results |
+| Field                | What it tells you                                                                       |
+| -------------------- | --------------------------------------------------------------------------------------- |
+| `role`               | The saved role that matches the current commit identity. Omitted if no role matches.    |
+| `overall`            | `aligned` or `warning`                                                                  |
+| `commitIdentity`     | Effective name and email, plus where each is coming from: `local`, `global`, or `unset` |
+| `configuredIdentity` | Raw local and global Git config values                                                  |
+| `scope`              | Aggregate view of where the commit identity comes from                                  |
+| `repository`         | Repo context, branch, and parsed remote info                                            |
+| `sshAuth`            | SSH probe result. Omitted if no SSH probe was run.                                      |
+| `repoPolicy`         | `.gitrole` policy evaluation. Omitted if no policy file exists.                         |
+| `checks`             | Ordered list of individual check results                                                |
 
 The top-level field names above are the stable contract for `doctor --json`.
 
@@ -157,25 +157,25 @@ The top-level field names above are the stable contract for `doctor --json`.
 
 Use these parts for automation:
 
-| Surface | Safe to automate against |
-| --- | --- |
-| `overall` | yes |
-| `commitIdentity` | yes |
-| `configuredIdentity` | yes |
-| `scope` | yes |
-| `repository` | yes, but prefer presence/absence and documented fields over incidental details |
-| `sshAuth` | yes |
-| `repoPolicy` | yes |
-| `checks` | yes, as an ordered list of results |
+| Surface              | Safe to automate against                                                       |
+| -------------------- | ------------------------------------------------------------------------------ |
+| `overall`            | yes                                                                            |
+| `commitIdentity`     | yes                                                                            |
+| `configuredIdentity` | yes                                                                            |
+| `scope`              | yes                                                                            |
+| `repository`         | yes, but prefer presence/absence and documented fields over incidental details |
+| `sshAuth`            | yes                                                                            |
+| `repoPolicy`         | yes                                                                            |
+| `checks`             | yes, as an ordered list of results                                             |
 
 Do not treat every descriptive field as the same kind of contract:
 
-| Surface | Guidance |
-| --- | --- |
-| `checks[].message` | human-readable text; do not parse this |
-| `checks[].label` | diagnostic category string; useful for display and debugging, but not a closed vocabulary |
-| `repository.currentBranch` | useful context, but not the primary contract surface |
-| `repository.topLevelPath` | useful context, but not the primary contract surface |
+| Surface                    | Guidance                                                                                  |
+| -------------------------- | ----------------------------------------------------------------------------------------- |
+| `checks[].message`         | human-readable text; do not parse this                                                    |
+| `checks[].label`           | diagnostic category string; useful for display and debugging, but not a closed vocabulary |
+| `repository.currentBranch` | useful context, but not the primary contract surface                                      |
+| `repository.topLevelPath`  | useful context, but not the primary contract surface                                      |
 
 ### Important nested fields
 
@@ -183,69 +183,69 @@ These nested fields are documented for meaning and current shape. Additive chang
 
 #### `commitIdentity`
 
-| Field | Meaning | Values |
-| --- | --- | --- |
-| `fullName.value` | Effective commit author name | string, or omitted when unset |
-| `fullName.source` | Where the effective name came from | `local`, `global`, `unset` |
-| `email.value` | Effective commit author email | string, or omitted when unset |
-| `email.source` | Where the effective email came from | `local`, `global`, `unset` |
+| Field             | Meaning                             | Values                        |
+| ----------------- | ----------------------------------- | ----------------------------- |
+| `fullName.value`  | Effective commit author name        | string, or omitted when unset |
+| `fullName.source` | Where the effective name came from  | `local`, `global`, `unset`    |
+| `email.value`     | Effective commit author email       | string, or omitted when unset |
+| `email.source`    | Where the effective email came from | `local`, `global`, `unset`    |
 
 #### `configuredIdentity`
 
-| Field | Meaning |
-| --- | --- |
-| `configuredIdentity.local.fullName` | Raw repo-local `user.name`, if present |
-| `configuredIdentity.local.email` | Raw repo-local `user.email`, if present |
-| `configuredIdentity.global.fullName` | Raw global `user.name`, if present |
-| `configuredIdentity.global.email` | Raw global `user.email`, if present |
+| Field                                | Meaning                                 |
+| ------------------------------------ | --------------------------------------- |
+| `configuredIdentity.local.fullName`  | Raw repo-local `user.name`, if present  |
+| `configuredIdentity.local.email`     | Raw repo-local `user.email`, if present |
+| `configuredIdentity.global.fullName` | Raw global `user.name`, if present      |
+| `configuredIdentity.global.email`    | Raw global `user.email`, if present     |
 
 #### `scope`
 
-| Field | Meaning | Values |
-| --- | --- | --- |
-| `effective` | Aggregate source for the active commit identity | `local`, `global`, `mixed`, `unset` |
-| `hasLocalOverride` | Whether either commit-identity field is sourced from repo-local config | `true`, `false` |
+| Field              | Meaning                                                                | Values                              |
+| ------------------ | ---------------------------------------------------------------------- | ----------------------------------- |
+| `effective`        | Aggregate source for the active commit identity                        | `local`, `global`, `mixed`, `unset` |
+| `hasLocalOverride` | Whether either commit-identity field is sourced from repo-local config | `true`, `false`                     |
 
 #### `repository`
 
-| Field | Meaning |
-| --- | --- |
-| `isInsideWorkTree` | Whether the current working directory is inside a Git work tree |
-| `hasCommits` | Whether `HEAD` exists. Omitted outside a Git repo. |
-| `topLevelPath` | Absolute path to the repo root. Omitted outside a Git repo. |
-| `currentBranch` | Current branch name, when available |
-| `upstreamBranch` | Configured upstream branch, when available |
-| `remote` | Parsed `origin` remote info. Omitted when `origin` is not configured. |
+| Field              | Meaning                                                               |
+| ------------------ | --------------------------------------------------------------------- |
+| `isInsideWorkTree` | Whether the current working directory is inside a Git work tree       |
+| `hasCommits`       | Whether `HEAD` exists. Omitted outside a Git repo.                    |
+| `topLevelPath`     | Absolute path to the repo root. Omitted outside a Git repo.           |
+| `currentBranch`    | Current branch name, when available                                   |
+| `upstreamBranch`   | Configured upstream branch, when available                            |
+| `remote`           | Parsed `origin` remote info. Omitted when `origin` is not configured. |
 
 #### `repository.remote`
 
-| Field | Meaning | Values |
-| --- | --- | --- |
-| `name` | Remote name | currently `origin` |
-| `url` | Raw remote URL | string |
-| `protocol` | Parsed remote protocol | `ssh`, `https`, `unknown` |
-| `host` | Parsed remote host | string when parseable |
-| `owner` | Parsed repository owner or org | string when parseable |
-| `repository` | Parsed repository name | string when parseable |
+| Field        | Meaning                        | Values                    |
+| ------------ | ------------------------------ | ------------------------- |
+| `name`       | Remote name                    | currently `origin`        |
+| `url`        | Raw remote URL                 | string                    |
+| `protocol`   | Parsed remote protocol         | `ssh`, `https`, `unknown` |
+| `host`       | Parsed remote host             | string when parseable     |
+| `owner`      | Parsed repository owner or org | string when parseable     |
+| `repository` | Parsed repository name         | string when parseable     |
 
 #### `sshAuth`
 
-| Field | Meaning |
-| --- | --- |
-| `ok` | Whether the SSH probe succeeded |
-| `host` | SSH host alias or hostname that was probed |
+| Field        | Meaning                                                 |
+| ------------ | ------------------------------------------------------- |
+| `ok`         | Whether the SSH probe succeeded                         |
+| `host`       | SSH host alias or hostname that was probed              |
 | `githubUser` | GitHub user resolved from the SSH probe, when available |
-| `message` | Probe detail when no GitHub user could be resolved |
+| `message`    | Probe detail when no GitHub user could be resolved      |
 
 #### `repoPolicy`
 
-| Field | Meaning | Values |
-| --- | --- | --- |
-| `version` | Policy schema version | currently `1` |
-| `defaultRole` | Preferred role for this repo | role name |
-| `allowedRoles` | Roles allowed by `.gitrole` | array of role names |
-| `effectiveRole` | Active matched role used for evaluation | role name, or omitted |
-| `status` | Policy evaluation result | `default`, `allowed`, `notAllowed` |
+| Field           | Meaning                                 | Values                             |
+| --------------- | --------------------------------------- | ---------------------------------- |
+| `version`       | Policy schema version                   | currently `1`                      |
+| `defaultRole`   | Preferred role for this repo            | role name                          |
+| `allowedRoles`  | Roles allowed by `.gitrole`             | array of role names                |
+| `effectiveRole` | Active matched role used for evaluation | role name, or omitted              |
+| `status`        | Policy evaluation result                | `default`, `allowed`, `notAllowed` |
 
 ### The `checks` array
 
@@ -259,19 +259,19 @@ Each entry looks like:
 }
 ```
 
-| Field | Meaning | Values |
-| --- | --- | --- |
-| `status` | Per-check result | `ok`, `warn`, `info` |
-| `label` | Diagnostic category string | short string such as `role`, `remote`, or `auth` |
-| `message` | Human-readable explanation | string; do not parse this |
+| Field     | Meaning                    | Values                                           |
+| --------- | -------------------------- | ------------------------------------------------ |
+| `status`  | Per-check result           | `ok`, `warn`, `info`                             |
+| `label`   | Diagnostic category string | short string such as `role`, `remote`, or `auth` |
+| `message` | Human-readable explanation | string; do not parse this                        |
 
 ### Exit codes
 
-| Code | Meaning |
-| --- | --- |
-| `0` | Diagnosis complete, no warnings |
-| `2` | Diagnosis complete, at least one `warn` check |
-| `1` | Failure - error written to stderr, no JSON |
+| Code | Meaning                                       |
+| ---- | --------------------------------------------- |
+| `0`  | Diagnosis complete, no warnings               |
+| `2`  | Diagnosis complete, at least one `warn` check |
+| `1`  | Failure - error written to stderr, no JSON    |
 
 ### What's stable
 
@@ -297,10 +297,10 @@ gitrole resolve --json
 }
 ```
 
-| Field | What it tells you |
-| --- | --- |
-| `version` | Policy schema version. Currently always `1`. |
-| `defaultRole` | The preferred role for this repo |
+| Field          | What it tells you                                                |
+| -------------- | ---------------------------------------------------------------- |
+| `version`      | Policy schema version. Currently always `1`.                     |
+| `defaultRole`  | The preferred role for this repo                                 |
 | `allowedRoles` | All roles that are valid here. `defaultRole` is always included. |
 
 ### When it fails
@@ -309,18 +309,18 @@ gitrole resolve --json
 
 `resolve --json` exits with code `1` and writes to stderr with no JSON when:
 
-| Condition | Result |
-| --- | --- |
-| Not inside a Git repo | exit `1`, stderr message, no JSON |
-| No `.gitrole` file exists | exit `1`, stderr message, no JSON |
+| Condition                                             | Result                            |
+| ----------------------------------------------------- | --------------------------------- |
+| Not inside a Git repo                                 | exit `1`, stderr message, no JSON |
+| No `.gitrole` file exists                             | exit `1`, stderr message, no JSON |
 | `.gitrole` is invalid JSON or fails schema validation | exit `1`, stderr message, no JSON |
 
 ### Exit codes
 
-| Code | Meaning |
-| --- | --- |
-| `0` | Policy resolved, JSON emitted |
-| `1` | Failure - error written to stderr, no JSON |
+| Code | Meaning                                    |
+| ---- | ------------------------------------------ |
+| `0`  | Policy resolved, JSON emitted              |
+| `1`  | Failure - error written to stderr, no JSON |
 
 ---
 
@@ -328,42 +328,25 @@ gitrole resolve --json
 
 Role names are constrained so machine-readable output stays unambiguous.
 
-| Rule | Allowed |
-| --- | --- |
-| letters | lowercase `a-z` only |
-| digits | `0-9` |
-| separators | `-`, `_` |
+| Rule       | Allowed                                           |
+| ---------- | ------------------------------------------------- |
+| letters    | lowercase `a-z` only                              |
+| digits     | `0-9`                                             |
+| separators | `-`, `_`                                          |
 | disallowed | spaces, slashes, uppercase, and other punctuation |
 
-| Example | Valid |
-| --- | --- |
-| `work` | yes |
-| `personal` | yes |
-| `client-acme` | yes |
-| `agent_bot` | yes |
-| `client acme` | no |
-| `Work` | no |
-| `my@role` | no |
+| Example       | Valid |
+| ------------- | ----- |
+| `work`        | yes   |
+| `personal`    | yes   |
+| `client-acme` | yes   |
+| `agent_bot`   | yes   |
+| `client acme` | no    |
+| `Work`        | no    |
+| `my@role`     | no    |
 
 If you try to create a role with an invalid name, you will get:
 
 ```text
 error: invalid role name "client acme"; use lowercase letters, numbers, "-" or "_"
 ```
-
----
-
-## Stability policy
-
-These three surfaces are public contracts.
-
-| Change | Compatibility |
-| --- | --- |
-| Changing field names | breaking |
-| Changing field order in `status --short` | breaking |
-| Removing documented fields | breaking |
-| Changing documented value vocabularies | breaking |
-| Changing exit code semantics | breaking |
-| Adding new fields to JSON output | non-breaking |
-| Adding new `checks` entries | non-breaking |
-| Adding new values to undocumented fields | non-breaking |

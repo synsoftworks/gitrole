@@ -2,7 +2,7 @@
 layout: layouts/base.njk
 title: Fix pushes using the wrong GitHub account
 eyebrow: Use case
-summary: Diagnose and fix repositories where commit identity looks right but SSH pushes still authenticate as the wrong GitHub account.
+summary: Diagnose and fix repositories where Git commit identity looks right locally but SSH pushes still authenticate as the wrong GitHub account.
 order: 1
 ---
 

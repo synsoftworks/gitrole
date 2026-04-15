@@ -1,8 +1,8 @@
 ---
 layout: layouts/base.njk
-title: Commands
+title: gitrole Commands Reference
 eyebrow: Reference
-summary: Reference for the current gitrole command surface and what each command is for.
+summary: Reference for gitrole CLI commands for saved roles, Git identity switching, SSH push alignment, diagnosis, and repo-local policy.
 ---
 
 <h2 id="command-list">Command list</h2>

@@ -1,8 +1,8 @@
 ---
 layout: layouts/base.njk
-title: Switch Git identities without guessing
+title: Switch your git identity in one command.
 eyebrow: Overview
-summary: Save Git identities, switch repositories safely, and verify that commits and SSH pushes use the account you expect.
+summary: Save named roles, switch per repo, and check that commit identity and push identity are actually aligned.
 ---
 
 <div class="button-row">
